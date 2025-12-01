@@ -21,12 +21,12 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=sha,format=short # Tag is now just the short SHA (e.g., a1b2c3d)
+            type=sha,format=short
             latest
       
-      - name: Get Short SHA Tag Name
+      - name: Get Clean Git Tag Name (Short SHA)
         id: tag_name
-        run: echo "TAG_NAME=$(echo ${{ steps.meta.outputs.tags }} | awk -F',' '{print $1}')" >> $GITHUB_OUTPUT
+        run: echo "TAG_NAME=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
