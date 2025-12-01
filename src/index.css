@@ -29,6 +29,6 @@ footer {
 
 a {
   font-weight: 500;
-  color: #646cff;
+  color: var(--color-gray-600);
   text-decoration: inherit;
 }
