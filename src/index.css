@@ -210,10 +210,6 @@ button {
   filter: brightness(1.08);
 }
 
-.avatar-position {
-  transition: transform 260ms cubic-bezier(0.22, 0.8, 0.35, 1);
-}
-
 .avatar-bob {
   animation: bob 1.2s steps(2, end) infinite;
 }

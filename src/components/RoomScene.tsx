@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ROOM_DEPTH,
   ROOM_WIDTH,
@@ -29,6 +29,73 @@ const tilePoints = ({ x, y }: Position) =>
   ]
     .map((point) => `${point.x},${point.y}`)
     .join(" ");
+
+function StudioAvatar({
+  player,
+  isCurrent,
+}: {
+  player: Player;
+  isCurrent: boolean;
+}) {
+  const target = toIso(player.position);
+  const [point, setPoint] = useState(() => toIso(player.position));
+  const visiblePoint = useRef(point);
+
+  useEffect(() => {
+    const from = visiblePoint.current;
+    if (from.x === target.x && from.y === target.y) return;
+    const started = performance.now();
+    const duration = window.matchMedia("(prefers-reduced-motion: reduce)")
+      .matches
+      ? 0
+      : 260;
+    let frame: number;
+    const animate = (now: number) => {
+      const progress =
+        duration === 0
+          ? 1
+          : Math.max(0, Math.min(1, (now - started) / duration));
+      const eased = 1 - (1 - progress) ** 3;
+      const next = {
+        x: from.x + (target.x - from.x) * eased,
+        y: from.y + (target.y - from.y) * eased,
+      };
+      visiblePoint.current = next;
+      setPoint(next);
+      if (progress < 1) frame = requestAnimationFrame(animate);
+    };
+    // SVG draw-order changes cancel CSS transitions. A keyed component keeps
+    // this animation running when React moves its node past furniture or peers.
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
+  }, [target.x, target.y]);
+
+  return (
+    <g
+      className="avatar-position"
+      data-player={player.id}
+      data-position={`${player.position.x},${player.position.y}`}
+      style={{ transform: `translate(${point.x}px, ${point.y}px)` }}
+    >
+      <g transform="scale(1.3)" pointerEvents="none">
+        {player.animal === "cat" ? (
+          <CatAnimal
+            name={player.name}
+            facing={player.facing}
+            position={player.position}
+            isCurrent={isCurrent}
+          />
+        ) : (
+          <PixelAnimal
+            kind={player.animal}
+            name={player.name}
+            isCurrent={isCurrent}
+          />
+        )}
+      </g>
+    </g>
+  );
+}
 
 function RoomScene({
   currentPlayer,
@@ -117,32 +184,12 @@ function RoomScene({
       {layers.map((layer) => {
         if (layer.kind === "player") {
           const { player } = layer;
-          const point = toIso(player.position);
           return (
-            <g
+            <StudioAvatar
               key={player.id}
-              className="avatar-position"
-              data-player={player.id}
-              data-position={`${player.position.x},${player.position.y}`}
-              style={{ transform: `translate(${point.x}px, ${point.y}px)` }}
-            >
-              <g transform="scale(1.3)" pointerEvents="none">
-                {player.animal === "cat" ? (
-                  <CatAnimal
-                    name={player.name}
-                    facing={player.facing}
-                    position={player.position}
-                    isCurrent={player.id === currentPlayer.id}
-                  />
-                ) : (
-                  <PixelAnimal
-                    kind={player.animal}
-                    name={player.name}
-                    isCurrent={player.id === currentPlayer.id}
-                  />
-                )}
-              </g>
-            </g>
+              player={player}
+              isCurrent={player.id === currentPlayer.id}
+            />
           );
         }
         const { prop } = layer;
