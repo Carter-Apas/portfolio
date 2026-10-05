@@ -1,0 +1,25 @@
+Thank you so much for downloading (Isometric Room Builder [Walls + Floors + Tiled]). 
+
+----------------------------------------------------------------------------------
+FILE CONTENTS:-
+
+16 Floor Tiles (32 x 32 Pixels).
+
+4 Wall Pieces (32 x 64 Pixels).
+
+A pre-built Tiled map, so you can jump right in and start experimenting.
+----------------------------------------------------------------------------------
+USAGE LICENSE:-
+
+-This asset pack can be used as they are, or after editing them, in commercial or personal projects. 
+
+-You cannot resell the product or redistribute it is. 
+
+-You cannot use this asset pack in training AI & LLMs or in NFT. 
+
+-Attribution is not required, but highly appreciated. (attribution link: https://thurraya.itch.io)
+
+
+----------------------------------------------------------------------------------
+
+if you liked this item, please support our page/brand to expand.we aim to publish new assets packages every month.
