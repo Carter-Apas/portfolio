@@ -75,8 +75,9 @@ keeps the full flow testable locally but only connects tabs in the same browser.
 
 ## Edit the studio
 
-The current artwork is `art/isometric_studio_warm_organic.png`, rendered from
-`art/isometric_studio_warm_organic.blend`. It includes warm window lighting,
+The current artwork is `art/isometric_studio_warm_bedside.png`, rendered from
+`art/isometric_studio_warm_bedside.blend`. It includes an Elliot Wild Oak
+three-drawer bedside, a potted fern and a Chalk Google Nest Mini, plus warm window lighting,
 foliage, sage plaster, a mottled floor, and the framed university certificate.
 Earlier Blender scenes and the illustration trial remain available in the repo.
 
@@ -84,11 +85,11 @@ After rendering the full scene to that PNG, export the web image, masks, and
 camera metadata with Blender 5.2:
 
 ```bash
-blender -b art/isometric_studio_warm_organic.blend -P scripts/export_studio_masks.py
+blender -b art/isometric_studio_warm_bedside.blend -P scripts/export_studio_masks.py
 ```
 
 This copies the artwork to `public/assets/studio/organic-room.png` and renders
-five white-on-black visible-surface masks directly from the Blender geometry.
+six white-on-black visible-surface masks directly from the Blender geometry.
 The SVG uses those luminance masks to redraw furniture among avatars in depth
 order, including the chair's mesh openings. `organic-scene.json` holds the floor
 corners and hotspot polygons projected through the same camera, plus collision

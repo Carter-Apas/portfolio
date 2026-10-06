@@ -194,7 +194,7 @@ function RoomScene({
       className="room-scene rendered-room"
       viewBox={STUDIO_SCENE.viewBox}
       role="group"
-      aria-label="Carter's isometric studio with a coding desk, 3D printer, surfboard and university certificate"
+      aria-label="Carter's isometric studio with a coding desk, 3D printer, surfboard, university certificate and oak bedside drawers with a fern and Nest Mini"
       preserveAspectRatio="xMidYMid meet"
     >
       <defs>

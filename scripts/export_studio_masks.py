@@ -1,6 +1,7 @@
-"""Export camera-aligned masks from the organic studio; never save scene changes.
+"""Export camera-aligned masks from a rendered studio; never save scene changes.
 
 blender -b art/isometric_studio_warm_organic.blend -P scripts/export_studio_masks.py
+blender -b art/isometric_studio_warm_bedside.blend -P scripts/export_studio_masks.py
 """
 import json
 import shutil
@@ -16,7 +17,8 @@ OUT.mkdir(parents=True, exist_ok=True)
 scene = bpy.context.scene
 width, height = scene.render.resolution_x, scene.render.resolution_y
 scene.render.resolution_percentage = 100
-shutil.copyfile(ROOT / 'art/isometric_studio_warm_organic.png', OUT / 'organic-room.png')
+source = Path(bpy.data.filepath)
+shutil.copyfile(source.with_suffix('.png'), OUT / 'organic-room.png')
 
 
 def project(point):
@@ -49,6 +51,10 @@ groups = [
     ('desk', ['01 PC tower', '02 Standing desk', '03 Monitor and MacBook', '04 Split keyboard and mouse'], 'computer', 'Coding', (0, 1.00, 1.44), 12.9),
     ('chair', ['05 Aeron style chair'], None, None, (-.67, .34, .5), 14.7),
 ]
+bedside_collection = '11 Elliot bedside with fern and Nest Mini'
+has_bedside = bpy.data.collections.get(bedside_collection) is not None
+if has_bedside:
+    groups.append(('bedside', [bedside_collection], None, None, (2.23, -1.16, .59), 10.9))
 props = []
 for key, collections, inspect_id, label, anchor, depth in groups:
     objects = {o for name in collections for o in bpy.data.collections[name].all_objects if o.type == 'MESH'}
@@ -68,7 +74,8 @@ for y in range(13):
         chair = ((wx + .67) / .40) ** 2 + ((wy - .34) / .39) ** 2 < 1
         cabinet = .69 < wx < 1.67 and .92 < wy < 1.60
         board = 1.78 < wx < 2.48 and 1.17 < wy < 1.65
-        if desk or chair or cabinet or board:
+        bedside = has_bedside and 1.97 < wx < 2.49 and -1.45 < wy < -.87
+        if desk or chair or cabinet or board or bedside:
             blocked.append(f'{x},{y}')
 
 metadata = {
@@ -76,7 +83,7 @@ metadata = {
     'background': '/assets/studio/organic-room.png', 'gridWidth': 10, 'gridDepth': 13,
     'floorCorners': [project(p) for p in [(2.5, 1.55, .02), (2.5, -1.45, .02), (-1.4, -1.45, .02), (-1.4, 1.55, .02)]],
     'blocked': blocked, 'props': props,
-    'sourceNote': 'Render and visible-surface masks from art/isometric_studio_warm_organic.blend; floor grid projected through the same orthographic camera.',
+    'sourceNote': f'Render and visible-surface masks from {source.relative_to(ROOT)}; floor grid projected through the same orthographic camera.',
 }
 (OUT / 'organic-scene.json').write_text(json.dumps(metadata, indent=2) + '\n')
 

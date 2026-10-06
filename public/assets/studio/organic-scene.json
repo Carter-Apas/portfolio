@@ -25,7 +25,11 @@
   ],
   "blocked": [
     "0,0",
+    "8,0",
+    "9,0",
     "0,1",
+    "8,1",
+    "9,1",
     "0,3",
     "1,3",
     "0,4",
@@ -156,7 +160,7 @@
       "maskSrc": "/assets/studio/organic-printer-mask.png",
       "depth": 6.0,
       "inspectId": "printer",
-      "label": "Maker’s lab",
+      "label": "Maker\u2019s lab",
       "anchor": [
         710.915,
         501.689
@@ -347,7 +351,65 @@
           962.425
         ]
       ]
+    },
+    {
+      "id": "bedside",
+      "src": "/assets/studio/organic-room.png",
+      "maskSrc": "/assets/studio/organic-bedside-mask.png",
+      "depth": 10.9,
+      "inspectId": null,
+      "label": null,
+      "anchor": [
+        1336.287,
+        788.684
+      ],
+      "polygon": [
+        [
+          1234.666,
+          681.492
+        ],
+        [
+          1314.955,
+          635.137
+        ],
+        [
+          1386.94,
+          676.698
+        ],
+        [
+          1415.038,
+          791.77
+        ],
+        [
+          1415.038,
+          795.885
+        ],
+        [
+          1412.9,
+          913.152
+        ],
+        [
+          1341.632,
+          954.298
+        ],
+        [
+          1338.425,
+          952.447
+        ],
+        [
+          1262.882,
+          908.832
+        ],
+        [
+          1259.675,
+          906.98
+        ],
+        [
+          1234.666,
+          744.462
+        ]
+      ]
     }
   ],
-  "sourceNote": "Render and visible-surface masks from art/isometric_studio_warm_organic.blend; floor grid projected through the same orthographic camera."
+  "sourceNote": "Render and visible-surface masks from art/isometric_studio_warm_bedside.blend; floor grid projected through the same orthographic camera."
 }
