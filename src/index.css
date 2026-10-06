@@ -194,6 +194,11 @@ button {
   image-rendering: crisp-edges;
 }
 
+.studio-animal-sprite,
+.studio-vacuum-sprite {
+  image-rendering: auto;
+}
+
 .floor polygon:not(.blocked):hover {
   fill: rgba(255, 239, 169, 0.3);
 }
@@ -973,10 +978,6 @@ button {
 /* Continue the cool backdrop around the warm Blender render. */
 .room-stage {
   background: #354c60;
-}
-
-.studio-animal-sprite {
-  image-rendering: auto;
 }
 
 .animal-identity-preview {

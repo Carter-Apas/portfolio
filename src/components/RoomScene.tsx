@@ -10,6 +10,9 @@ import {
 } from "../roomData";
 import type { Player } from "../realtime";
 import BlenderAnimal from "./BlenderAnimal";
+import useResidentVacuum, { VACUUM_STEP_DURATION, type ResidentVacuum } from "../hooks/useResidentVacuum";
+import RobotVacuum from "./RobotVacuum";
+
 
 type Props = {
   currentPlayer: Player;
@@ -32,9 +35,13 @@ const tilePoints = ({ x, y }: Position) =>
 function StudioAvatar({
   player,
   isCurrent,
+  isResident = false,
+  movementDuration = 260,
 }: {
-  player: Player;
+  player: Player | ResidentVacuum;
   isCurrent: boolean;
+  isResident?: boolean;
+  movementDuration?: number;
 }) {
   const target = toIso(player.position);
   const [point, setPoint] = useState(() => toIso(player.position));
@@ -47,14 +54,14 @@ function StudioAvatar({
     const duration = window.matchMedia("(prefers-reduced-motion: reduce)")
       .matches
       ? 0
-      : 260;
+      : movementDuration;
     let frame: number;
     const animate = (now: number) => {
       const progress =
         duration === 0
           ? 1
           : Math.max(0, Math.min(1, (now - started) / duration));
-      const eased = 1 - (1 - progress) ** 3;
+      const eased = isResident ? progress : 1 - (1 - progress) ** 3;
       const next = {
         x: from.x + (target.x - from.x) * eased,
         y: from.y + (target.y - from.y) * eased,
@@ -67,23 +74,35 @@ function StudioAvatar({
     // this animation running when React moves its node past furniture or peers.
     frame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frame);
-  }, [target.x, target.y]);
+  }, [target.x, target.y, movementDuration, isResident]);
 
   return (
     <g
       className="avatar-position"
-      data-player={player.id}
+      data-player={isResident ? undefined : player.id}
+      data-resident={isResident ? "vacuum" : undefined}
+      aria-label={isResident ? "Resident robot vacuum" : undefined}
       data-position={`${player.position.x},${player.position.y}`}
       style={{ transform: `translate(${point.x}px, ${point.y}px)` }}
     >
       <g transform="scale(1.3)" pointerEvents="none">
-        <BlenderAnimal
-          kind={player.animal}
-          name={player.name}
-          facing={player.facing}
-          position={player.position}
-          isCurrent={isCurrent}
-        />
+        {player.animal === "vacuum" ? (
+          <RobotVacuum
+            name={player.name}
+            facing={player.facing}
+            position={player.position}
+            walkDuration={movementDuration + 20}
+          />
+        ) : (
+          <BlenderAnimal
+            kind={player.animal}
+            name={player.name}
+            facing={player.facing}
+            position={player.position}
+            isCurrent={isCurrent}
+            walkDuration={movementDuration + 20}
+          />
+        )}
       </g>
     </g>
   );
@@ -96,6 +115,7 @@ function RoomScene({
   onMove,
   onInspect,
 }: Props) {
+  const residentVacuum = useResidentVacuum();
   useEffect(() => {
     if (!entered) return;
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -140,11 +160,13 @@ function RoomScene({
       depth: prop.depth,
       prop,
     })),
-    ...(entered ? [currentPlayer, ...players] : []).map((player) => ({
-      kind: "player" as const,
-      depth: player.position.x + player.position.y + 1,
-      player,
-    })),
+    ...[residentVacuum, ...(entered ? [currentPlayer, ...players] : [])].map(
+      (player) => ({
+        kind: "player" as const,
+        depth: player.position.x + player.position.y + 1,
+        player,
+      }),
+    ),
   ].sort((a, b) => a.depth - b.depth);
 
   return (
@@ -201,6 +223,10 @@ function RoomScene({
               key={player.id}
               player={player}
               isCurrent={player.id === currentPlayer.id}
+              isResident={player.id === residentVacuum.id}
+              movementDuration={
+                player.id === residentVacuum.id ? VACUUM_STEP_DURATION : 260
+              }
             />
           );
         }
@@ -261,6 +287,7 @@ function RoomScene({
           </g>
         );
       })}
+
     </svg>
   );
 }

@@ -1,0 +1,15 @@
+{
+  "frameSize": 128,
+  "framesPerDirection": 4,
+  "directions": [
+    "se",
+    "sw",
+    "nw",
+    "ne"
+  ],
+  "anchor": [
+    64.0,
+    81.602
+  ],
+  "source": "art/studio_vacuum.blend"
+}

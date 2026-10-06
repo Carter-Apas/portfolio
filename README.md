@@ -14,6 +14,12 @@ npm run dev
 Movement works with a mouse, WASD, or the arrow keys. Open the site in two tabs
 to test local multiplayer presence and chat.
 
+A robot vacuum wanders between walkable floor tiles without counting as a
+visitor. It pauses in hidden tabs and for reduced motion. Each browser runs its
+own ambient resident, with no AI chat or backend required. The cat prototype is
+preserved in `src/hooks/useResidentCat.ts`; the active vacuum uses
+`src/hooks/useResidentVacuum.ts`.
+
 ## Enable public multiplayer
 
 The room uses Supabase Realtime presence and broadcast when these variables are
@@ -95,6 +101,19 @@ The output is `public/assets/animals/cat/studio-cat-spritesheet.png`; a directio
 preview is saved to `art/cat/preview.png`. The other animal sources and export
 commands are listed below.
 
+The wandering resident currently uses a robot vacuum from the separate
+`art/studio_vacuum.blend` scene. The saved cat scene and sprite sheet remain
+available. The vacuum has four directions and an animated side brush, avoids
+blocked furniture tiles, and pauses for reduced motion or a hidden tab.
+
+```sh
+blender -b --factory-startup -P scripts/render_studio_vacuum.py
+uv run --with pillow python scripts/pack_studio_vacuum.py
+```
+
+Preview: `art/vacuum/preview.png`. Website sprites:
+`public/assets/residents/vacuum/studio-vacuum-spritesheet.png`.
+
 Fox, bunny, frog and kiwi visitors now use matching Blender artwork instead of pixel
 avatars. Each animal has its own `art/studio_fox.blend`,
 `art/studio_bunny.blend`, `art/studio_frog.blend`, or `art/studio_kiwi.blend`
@@ -113,4 +132,4 @@ uv run --with pillow python scripts/pack_studio_animals.py
 ```
 
 Direction previews are in `art/fox/preview.png`, `art/bunny/preview.png`,
-`art/frog/preview.png`, and `art/kiwi/preview.png`.
+`art/frog/preview.png`, and `art/kiwi/preview.png`. The robot vacuum remains the wandering resident.
