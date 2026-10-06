@@ -138,3 +138,12 @@ Room messages also appear in a bubble above the sender for seven seconds; a new
 message replaces their previous bubble. Long messages are shortened in the bubble
 and remain complete in the chat panel. Bubbles follow visitors and disappear when
 the visitor leaves.
+
+Connections close on `pagehide` and reopen when restored from the browser's page
+cache. Local rooms announce stationary visitors every five seconds and expire
+peers after 30 seconds without an update, covering crashes and missed exit
+messages. Hidden tabs get 90 seconds to accommodate browser timer throttling.
+Online rooms use Supabase Presence as the membership source and close
+both the channel and socket on exit; late move packets cannot recreate peers that
+have left. See [Supabase Presence](https://supabase.com/docs/guides/realtime/presence).
+Run `npm test` for lifecycle, heartbeat, and online presence regression checks.

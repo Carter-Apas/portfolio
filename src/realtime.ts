@@ -35,32 +35,76 @@ type RoomConnection = {
 const url = import.meta.env.VITE_SUPABASE_URL;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// Exit events normally remove peers immediately. A lease also cleans up tabs
+// that crash or close without delivering their final BroadcastChannel message.
+const HEARTBEAT_INTERVAL = 5_000;
+const PEER_TIMEOUT = 30_000;
+// Chrome may throttle a long-hidden tab to one timer tick per minute.
+const HIDDEN_PEER_TIMEOUT = 90_000;
+type LocalEvent = RoomEvent | { type: "heartbeat"; player: Player; hidden: boolean };
+
 function localConnection(
   initialPlayer: Player,
   onEvent: (event: RoomEvent) => void,
 ): RoomConnection {
   const channel = new BroadcastChannel("carters-studio");
   let player = initialPlayer;
+  let closed = false;
+  const peers = new Map<string, { player: Player; lastSeen: number; timeout: number }>();
 
-  channel.onmessage = ({ data }: MessageEvent<RoomEvent>) => {
-    onEvent(data);
-    if (data.type === "join") {
-      channel.postMessage({ type: "move", player } satisfies RoomEvent);
+  const heartbeat = () => {
+    if (closed) return;
+    channel.postMessage({ type: "heartbeat", player, hidden: document.hidden } satisfies LocalEvent);
+  };
+  channel.onmessage = ({ data }: MessageEvent<LocalEvent>) => {
+    if (closed) return;
+    if (data.type === "message") {
+      onEvent(data);
+      return;
     }
+    if (data.type === "snapshot" || data.player.id === player.id) return;
+    if (data.type === "leave") {
+      peers.delete(data.player.id);
+      onEvent(data);
+      return;
+    }
+    peers.set(data.player.id, {
+      player: data.player,
+      lastSeen: Date.now(),
+      timeout: data.type === "heartbeat" && data.hidden ? HIDDEN_PEER_TIMEOUT : PEER_TIMEOUT,
+    });
+    onEvent(data.type === "heartbeat" ? { type: "move", player: data.player } : data);
+    if (data.type === "join") heartbeat();
   };
 
+  onEvent({ type: "snapshot", players: [] });
   channel.postMessage({ type: "join", player } satisfies RoomEvent);
+  const timer = window.setInterval(() => {
+    heartbeat();
+    for (const [id, peer] of peers) {
+      if (Date.now() - peer.lastSeen >= peer.timeout) {
+        peers.delete(id);
+        onEvent({ type: "leave", player: peer.player });
+      }
+    }
+  }, HEARTBEAT_INTERVAL);
+  // A visible tab immediately announces itself after timer throttling or sleep.
+  document.addEventListener("visibilitychange", heartbeat);
 
   return {
     mode: "local",
     update(nextPlayer) {
       player = nextPlayer;
-      channel.postMessage({ type: "move", player } satisfies RoomEvent);
+      if (!closed) channel.postMessage({ type: "move", player } satisfies RoomEvent);
     },
     sendMessage(message) {
-      channel.postMessage({ type: "message", message } satisfies RoomEvent);
+      if (!closed) channel.postMessage({ type: "message", message } satisfies RoomEvent);
     },
     close() {
+      if (closed) return;
+      closed = true;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", heartbeat);
       channel.postMessage({ type: "leave", player } satisfies RoomEvent);
       channel.close();
     },
@@ -73,6 +117,8 @@ function realtimeConnection(
 ): RoomConnection {
   const client = createClient(url, anonKey);
   let player = initialPlayer;
+  let closed = false;
+  let presentIds = new Set<string>();
   const channel: RealtimeChannel = client
     .channel("carters-studio", {
       config: {
@@ -81,21 +127,33 @@ function realtimeConnection(
       },
     })
     .on("presence", { event: "sync" }, () => {
-      const players = Object.values(channel.presenceState())
-        .flat()
-        .map((presence) => presence as unknown as Player);
-      onEvent({ type: "snapshot", players });
+      if (closed) return;
+      const roster = new Map<string, Player>();
+      for (const presence of Object.values(channel.presenceState()).flat()) {
+        const peer = presence as unknown as Player;
+        roster.set(peer.id, peer);
+      }
+      presentIds = new Set(roster.keys());
+      onEvent({ type: "snapshot", players: [...roster.values()] });
     })
     .on("broadcast", { event: "room-event" }, ({ payload }) => {
-      onEvent(payload as RoomEvent);
+      if (closed) return;
+      const event = payload as RoomEvent;
+      // Membership comes from Presence, so a delayed movement packet cannot
+      // bring back an avatar after its departure has synced.
+      if (event.type === "message" ||
+          (event.type === "move" && presentIds.has(event.player.id))) {
+        onEvent(event);
+      }
     })
     .subscribe(async (status) => {
-      if (status === "SUBSCRIBED") {
+      if (!closed && status === "SUBSCRIBED") {
         await channel.track(player);
       }
     });
 
   const broadcast = (event: RoomEvent) => {
+    if (closed) return;
     void channel.send({
       type: "broadcast",
       event: "room-event",
@@ -107,6 +165,7 @@ function realtimeConnection(
     mode: "realtime",
     update(nextPlayer) {
       player = nextPlayer;
+      if (closed) return;
       void channel.track(player);
       broadcast({ type: "move", player });
     },
@@ -114,16 +173,50 @@ function realtimeConnection(
       broadcast({ type: "message", message });
     },
     close() {
-      broadcast({ type: "leave", player });
+      if (closed) return;
+      closed = true;
+      void channel.untrack();
       void client.removeChannel(channel);
+      // Unload can interrupt the unsubscribe acknowledgement. Closing the
+      // socket also lets the server remove presence after an abrupt departure.
+      void client.realtime.disconnect();
     },
   };
 }
 
 export function connectToRoom(
-  player: Player,
+  initialPlayer: Player,
   onEvent: (event: RoomEvent) => void,
 ): RoomConnection {
-  if (url && anonKey) return realtimeConnection(player, onEvent);
-  return localConnection(player, onEvent);
+  const mode = url && anonKey ? "realtime" : "local";
+  let player = initialPlayer;
+  const open = () => mode === "realtime"
+    ? realtimeConnection(player, onEvent)
+    : localConnection(player, onEvent);
+  let active: RoomConnection | undefined = open();
+  const pagehide = () => {
+    active?.close();
+    active = undefined;
+  };
+  const pageshow = () => {
+    // Restore the same visitor when the browser returns from its back/forward
+    // cache, where React stays mounted and its connection effect does not rerun.
+    if (!active) active = open();
+  };
+  window.addEventListener("pagehide", pagehide);
+  window.addEventListener("pageshow", pageshow);
+
+  return {
+    mode,
+    update(nextPlayer) {
+      player = nextPlayer;
+      active?.update(player);
+    },
+    sendMessage(message) { active?.sendMessage(message); },
+    close() {
+      window.removeEventListener("pagehide", pagehide);
+      window.removeEventListener("pageshow", pageshow);
+      pagehide();
+    },
+  };
 }
