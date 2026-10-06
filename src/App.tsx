@@ -422,6 +422,23 @@ function App() {
             <span className="eyebrow">{activeContent.kicker}</span>
             <h2 id="detail-title">{activeContent.title}</h2>
             <p id="detail-description">{activeContent.description}</p>
+            {"credentials" in activeContent && (
+              <ul className="credential-list">
+                {activeContent.credentials.map((credential) => (
+                  <li key={credential.qualification}>
+                    <strong>{credential.issuer}</strong>
+                    {"location" in credential && (
+                      <span className="credential-location">{credential.location}</span>
+                    )}
+                    {"period" in credential && (
+                      <span className="credential-period">{credential.period}</span>
+                    )}
+                    <p>{credential.qualification}</p>
+                    {"detail" in credential && <p>{credential.detail}</p>}
+                  </li>
+                ))}
+              </ul>
+            )}
             {"tags" in activeContent && activeContent.tags && (
               <div className="tag-list">
                 {activeContent.tags.map((tag) => (

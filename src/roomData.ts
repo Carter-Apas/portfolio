@@ -32,7 +32,7 @@ export const INTERACTIVE_SPOTS = [
     description:
       "I’m a software engineer in Auckland, currently building useful AI products at ElementX. I like small teams, difficult systems problems, and software with a point of view.",
     tags: ["TypeScript", "React", "AI systems", "Product engineering"],
-    href: "https://elx.ai",
+    href: "https://www.elementx.ai/",
     linkLabel: "Visit ElementX",
   },
   {
@@ -56,40 +56,52 @@ export const INTERACTIVE_SPOTS = [
   },
   {
     id: "computer",
-    kicker: "At the desk · Coding",
-    title: "Ideas, code, and late-night experiments.",
+    kicker: "At the desk · ElementX",
+    title: "Building AI that people use.",
     description:
-      "This is where I build web apps, explore AI tools, and turn small ideas into working software. Placeholder for coding projects, favourite tools, and what I am learning next.",
-    tags: ["React", "TypeScript", "AI experiments"],
-    href: "https://github.com/carter-apas",
-    linkLabel: "Browse my code",
+      "At ElementX, I build AI products for real-world use. My focus is system architecture, scalability, observability, and fault-tolerant design: building services that handle growing demand, are easy to monitor, and recover when things go wrong.",
+    tags: ["JavaScript", "Python", "Kubernetes", "AWS", "Azure"],
+    href: "https://www.elementx.ai/",
+    linkLabel: "Explore ElementX",
   },
   {
     id: "printer",
-    kicker: "On the workbench · Making",
-    title: "From a sketch to something you can hold.",
+    kicker: "On the workbench · Maker’s lab",
+    title: "Still tinkering. Still making.",
     description:
-      "The A1 mini is my little prototyping corner: useful desk accessories, experimental parts, and the occasional print just for fun. Placeholder for 3D printing projects and hobby notes.",
-    tags: ["3D printing", "Prototyping", "Bambu Lab A1 mini"],
+      "In my spare time, I still tinker with electronics and mechatronics. This is my little maker’s lab: a place to experiment with circuits, build prototypes, and turn ideas into physical things.",
+    tags: ["Electronics", "Mechatronics", "3D printing", "Prototyping"],
     href: "",
     linkLabel: "",
   },
   {
     id: "education",
-    kicker: "On the wall · Education",
-    title: "Engineering at the University of Auckland.",
+    kicker: "On the wall · Education & certifications",
+    title: "Engineering foundations. Cloud credentials.",
     description:
-      "The engineering roots behind the projects in this room: curiosity, problem solving, and turning ideas into things that work.",
-    tags: ["Engineering", "University of Auckland"],
-    href: "https://www.auckland.ac.nz/en/engineering.html",
-    linkLabel: "Explore engineering at UoA",
+      "From mechatronics at the University of Auckland to cloud architecture, these are the foundations behind my work.",
+    credentials: [
+      {
+        issuer: "University of Auckland",
+        location: "Auckland, New Zealand",
+        period: "Feb. 2017 – 2020",
+        qualification: "Bachelor of Engineering (Honours) · Mechatronics",
+        detail: "Graduated with First Class Honours.",
+      },
+      {
+        issuer: "Amazon Web Services",
+        qualification: "AWS Certified Solutions Architect – Associate",
+      },
+    ],
+    href: "",
+    linkLabel: "",
   },
   {
     id: "surfboard",
     kicker: "Away from the screen · Surfing",
     title: "A little more ocean, a little less screen.",
     description:
-      "When I am not coding or making things, I like getting outside and finding a wave. Placeholder for surf trips, favourite spots, and other hobbies around Auckland.",
+      "When I am not coding or making things, I like getting outside and finding a wave.",
     tags: ["Surfing", "Outdoors", "Auckland"],
     href: "",
     linkLabel: "",

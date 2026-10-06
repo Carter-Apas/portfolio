@@ -45,7 +45,7 @@ def hull(points):
 groups = [
     ('certificate', ['Framed University of Auckland degree'], 'education', 'Education', (2.435, .23, 1.57), 0),
     ('surfboard', ['10 Surfboard'], 'surfboard', 'Surfing', (2.17, 1.40, 1.30), 2.7),
-    ('printer', ['08 Toolbox', '09 A1 mini printer'], 'printer', '3D printing', (1.1, 1.22, 1.36), 6.0),
+    ('printer', ['08 Toolbox', '09 A1 mini printer'], 'printer', 'Maker’s lab', (1.1, 1.22, 1.36), 6.0),
     ('desk', ['01 PC tower', '02 Standing desk', '03 Monitor and MacBook', '04 Split keyboard and mouse'], 'computer', 'Coding', (0, 1.00, 1.44), 12.9),
     ('chair', ['05 Aeron style chair'], None, None, (-.67, .34, .5), 14.7),
 ]

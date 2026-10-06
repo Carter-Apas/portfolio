@@ -62,9 +62,11 @@ temporary material, render, or visibility changes to the source scene.
 Keep the camera orthographic. If you move furniture, update the collision
 footprints and depths in the exporter before regenerating the assets.
 
-Popup copy lives in `INTERACTIVE_SPOTS` in `src/roomData.ts`. The computer,
-printer, and surfboard descriptions are placeholders. The certificate opens
-the education popup, which links to University of Auckland engineering.
+Popup copy lives in `INTERACTIVE_SPOTS` in `src/roomData.ts`. The computer
+describes ElementX experience, the workbench opens the maker’s lab, and the
+surfboard covers time outdoors. The certificate opens education and
+certifications, with the Mechatronics honours degree and AWS Solutions Architect
+Associate certification.
 Popups support keyboard
 activation, focus trapping, outside-click dismissal, and Escape.
 
