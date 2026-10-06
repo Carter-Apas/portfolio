@@ -9,8 +9,7 @@ import {
   type Position,
 } from "../roomData";
 import type { Player } from "../realtime";
-import CatAnimal from "./CatAnimal";
-import PixelAnimal from "./PixelAnimal";
+import BlenderAnimal from "./BlenderAnimal";
 
 type Props = {
   currentPlayer: Player;
@@ -78,20 +77,13 @@ function StudioAvatar({
       style={{ transform: `translate(${point.x}px, ${point.y}px)` }}
     >
       <g transform="scale(1.3)" pointerEvents="none">
-        {player.animal === "cat" ? (
-          <CatAnimal
-            name={player.name}
-            facing={player.facing}
-            position={player.position}
-            isCurrent={isCurrent}
-          />
-        ) : (
-          <PixelAnimal
-            kind={player.animal}
-            name={player.name}
-            isCurrent={isCurrent}
-          />
-        )}
+        <BlenderAnimal
+          kind={player.animal}
+          name={player.name}
+          facing={player.facing}
+          position={player.position}
+          isCurrent={isCurrent}
+        />
       </g>
     </g>
   );

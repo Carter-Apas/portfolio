@@ -1,6 +1,6 @@
 import studioScene from "../public/assets/studio/organic-scene.json";
 
-export type AnimalKind = "fox" | "cat" | "bunny" | "frog";
+export type AnimalKind = "fox" | "cat" | "bunny" | "frog" | "kiwi";
 
 export type Position = {
   x: number;
@@ -19,6 +19,7 @@ export const ANIMALS: { id: AnimalKind; label: string }[] = [
   { id: "cat", label: "Cat" },
   { id: "bunny", label: "Bunny" },
   { id: "frog", label: "Frog" },
+  { id: "kiwi", label: "Kiwi" },
 ];
 
 export const BLOCKED_TILES = new Set(studioScene.blocked);

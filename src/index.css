@@ -974,3 +974,14 @@ button {
 .room-stage {
   background: #354c60;
 }
+
+.studio-animal-sprite {
+  image-rendering: auto;
+}
+
+.animal-identity-preview {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  flex-shrink: 0;
+}

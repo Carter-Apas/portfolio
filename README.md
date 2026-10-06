@@ -1,6 +1,6 @@
 # Carter's Studio
 
-An isometric, single-room portfolio where visitors enter as animals,
+An isometric, single-room portfolio where visitors enter as softly shaded animals,
 explore a Blender-rendered studio, and chat. Click the computer, A1 mini printer,
 surfboard, or university certificate to open coding, hobby, and education notes.
 
@@ -77,3 +77,40 @@ activation, focus trapping, outside-click dismissal, and Escape.
   deploying this portfolio for professional or commercial use.
 
 The original licence files are stored alongside the assets under `public/assets`.
+
+Cat visitors use transparent sprites rendered from the separate
+`art/studio_cat.blend` scene. This scene matches the room camera angle and uses
+warm, softly shaded ginger materials. It contains an eight-frame idle animation
+and an eight-frame walk cycle; the website sheet contains four diagonal directions.
+The cat's floor anchor is recorded in `art/cat/sprite-layout.json`.
+
+To regenerate the cat without modifying the room:
+
+```sh
+blender -b --factory-startup -P scripts/render_studio_cat.py
+uv run --with pillow python scripts/pack_studio_cat.py
+```
+
+The output is `public/assets/animals/cat/studio-cat-spritesheet.png`; a direction
+preview is saved to `art/cat/preview.png`. The other animal sources and export
+commands are listed below.
+
+Fox, bunny, frog and kiwi visitors now use matching Blender artwork instead of pixel
+avatars. Each animal has its own `art/studio_fox.blend`,
+`art/studio_bunny.blend`, `art/studio_frog.blend`, or `art/studio_kiwi.blend`
+source, with eight idle and walking frames in each of four diagonal directions. They share the cat's camera,
+lighting, transparent frame size, and floor anchor. Entry previews use the same
+rendered artwork; visitor movement and room presence still work as before.
+
+To regenerate these animals without editing the saved cat or room:
+
+```sh
+blender -b --factory-startup -P scripts/render_studio_animals.py -- fox
+blender -b --factory-startup -P scripts/render_studio_animals.py -- bunny
+blender -b --factory-startup -P scripts/render_studio_animals.py -- frog
+blender -b --factory-startup -P scripts/render_studio_animals.py -- kiwi
+uv run --with pillow python scripts/pack_studio_animals.py
+```
+
+Direction previews are in `art/fox/preview.png`, `art/bunny/preview.png`,
+`art/frog/preview.png`, and `art/kiwi/preview.png`.

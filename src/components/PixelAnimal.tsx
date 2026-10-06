@@ -10,6 +10,7 @@ const palettes: Record<
   AnimalKind,
   { main: string; dark: string; light: string; accent: string }
 > = {
+  kiwi: { main: "#8a6b44", dark: "#4d3d29", light: "#d1b48a", accent: "#292a25" },
   fox: { main: "#e97832", dark: "#743b32", light: "#fff0d5", accent: "#272535" },
   cat: { main: "#68657c", dark: "#393746", light: "#d9d2d0", accent: "#f0ad54" },
   bunny: { main: "#e8dfd7", dark: "#8f7b86", light: "#fffaf3", accent: "#e99aa5" },

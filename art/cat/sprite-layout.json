@@ -1,0 +1,19 @@
+{
+  "frameSize": 128,
+  "framesPerDirection": 8,
+  "directions": [
+    "se",
+    "sw",
+    "nw",
+    "ne"
+  ],
+  "states": [
+    "idle",
+    "walk"
+  ],
+  "anchor": [
+    64.0,
+    94.403
+  ],
+  "source": "art/studio_cat.blend"
+}

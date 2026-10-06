@@ -367,9 +367,12 @@ function App() {
 
             <div className="identity-card">
               <div className="identity-preview">
-                <span className={`animal-face ${animal}`} aria-hidden="true">
-                  <i />
-                </span>
+                <img
+                  className="animal-identity-preview"
+                  src={`/assets/animals/${animal}/studio-${animal}-preview.png`}
+                  alt=""
+                  aria-hidden="true"
+                />
                 <span>
                   <small>Your room identity</small>
                   <strong>{name}</strong>
