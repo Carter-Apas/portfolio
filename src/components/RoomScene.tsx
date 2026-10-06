@@ -8,13 +8,16 @@ import {
   toIso,
   type Position,
 } from "../roomData";
-import type { Player } from "../realtime";
+import type { ChatMessage, Player } from "../realtime";
 import BlenderAnimal from "./BlenderAnimal";
 import useResidentVacuum, { VACUUM_STEP_DURATION, type ResidentVacuum } from "../hooks/useResidentVacuum";
 import RobotVacuum from "./RobotVacuum";
 
+import SpeechBubble from "./SpeechBubble";
+import useSpeechBubbles from "../hooks/useSpeechBubbles";
 
 type Props = {
+  messages: ChatMessage[];
   currentPlayer: Player;
   players: Player[];
   entered: boolean;
@@ -32,19 +35,9 @@ const tilePoints = ({ x, y }: Position) =>
     .map((point) => `${point.x},${point.y}`)
     .join(" ");
 
-function StudioAvatar({
-  player,
-  isCurrent,
-  isResident = false,
-  movementDuration = 260,
-}: {
-  player: Player | ResidentVacuum;
-  isCurrent: boolean;
-  isResident?: boolean;
-  movementDuration?: number;
-}) {
-  const target = toIso(player.position);
-  const [point, setPoint] = useState(() => toIso(player.position));
+function useAvatarPoint(position: Position, movementDuration = 260, isResident = false) {
+  const target = toIso(position);
+  const [point, setPoint] = useState(() => toIso(position));
   const visiblePoint = useRef(point);
 
   useEffect(() => {
@@ -75,6 +68,22 @@ function StudioAvatar({
     frame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frame);
   }, [target.x, target.y, movementDuration, isResident]);
+
+  return point;
+}
+
+function StudioAvatar({
+  player,
+  isCurrent,
+  isResident = false,
+  movementDuration = 260,
+}: {
+  player: Player | ResidentVacuum;
+  isCurrent: boolean;
+  isResident?: boolean;
+  movementDuration?: number;
+}) {
+  const point = useAvatarPoint(player.position, movementDuration, isResident);
 
   return (
     <g
@@ -108,7 +117,17 @@ function StudioAvatar({
   );
 }
 
+function VisitorSpeech({ player, message }: { player: Player; message: ChatMessage }) {
+  const point = useAvatarPoint(player.position);
+  return (
+    <g transform={`translate(${point.x},${point.y})`}>
+      <SpeechBubble message={message} />
+    </g>
+  );
+}
+
 function RoomScene({
+  messages,
   currentPlayer,
   players,
   entered,
@@ -116,6 +135,7 @@ function RoomScene({
   onInspect,
 }: Props) {
   const residentVacuum = useResidentVacuum();
+  const bubbles = useSpeechBubbles(messages);
   useEffect(() => {
     if (!entered) return;
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -287,7 +307,12 @@ function RoomScene({
           </g>
         );
       })}
-
+      {entered && [currentPlayer, ...players].map((player) => {
+        const bubble = bubbles[player.id];
+        return bubble ? (
+          <VisitorSpeech key={player.id} player={player} message={bubble.message} />
+        ) : null;
+      })}
     </svg>
   );
 }

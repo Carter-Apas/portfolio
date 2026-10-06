@@ -986,3 +986,17 @@ button {
   object-fit: contain;
   flex-shrink: 0;
 }
+
+.speech-bubble rect,
+.speech-bubble path {
+  fill: #fff4dc;
+  stroke: #8b7961;
+  stroke-width: 2;
+}
+
+.speech-bubble text {
+  fill: #39382f;
+  font-family: inherit;
+  font-size: 21px;
+  font-weight: 500;
+}

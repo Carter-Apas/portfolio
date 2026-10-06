@@ -268,6 +268,7 @@ function App() {
 
       <section className="room-stage" aria-label="Carter's virtual studio">
         <RoomScene
+          messages={messages}
           currentPlayer={currentPlayer}
           players={players}
           entered={entered}

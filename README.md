@@ -133,3 +133,8 @@ uv run --with pillow python scripts/pack_studio_animals.py
 
 Direction previews are in `art/fox/preview.png`, `art/bunny/preview.png`,
 `art/frog/preview.png`, and `art/kiwi/preview.png`. The robot vacuum remains the wandering resident.
+
+Room messages also appear in a bubble above the sender for seven seconds; a new
+message replaces their previous bubble. Long messages are shortened in the bubble
+and remain complete in the chat panel. Bubbles follow visitors and disappear when
+the visitor leaves.
