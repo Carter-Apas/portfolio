@@ -1,4 +1,4 @@
-import studioScene from "../public/assets/studio/scene.json";
+import studioScene from "../public/assets/studio/organic-scene.json";
 
 export type AnimalKind = "fox" | "cat" | "bunny" | "frog";
 
@@ -74,6 +74,16 @@ export const INTERACTIVE_SPOTS = [
     linkLabel: "",
   },
   {
+    id: "education",
+    kicker: "On the wall · Education",
+    title: "Engineering at the University of Auckland.",
+    description:
+      "The engineering roots behind the projects in this room: curiosity, problem solving, and turning ideas into things that work.",
+    tags: ["Engineering", "University of Auckland"],
+    href: "https://www.auckland.ac.nz/en/engineering.html",
+    linkLabel: "Explore engineering at UoA",
+  },
+  {
     id: "surfboard",
     kicker: "Away from the screen · Surfing",
     title: "A little more ocean, a little less screen.",
@@ -85,13 +95,18 @@ export const INTERACTIVE_SPOTS = [
   },
 ] as const;
 
-// The grid is projected from the same orthographic camera as the rendered art.
-export const projectGrid = (x: number, y: number) => ({
-  x:
-    studioScene.origin[0] + x * studioScene.stepX[0] + y * studioScene.stepY[0],
-  y:
-    studioScene.origin[1] + x * studioScene.stepX[1] + y * studioScene.stepY[1],
-});
+// Floor corners come from the same Blender camera as the render and masks.
+export const projectGrid = (x: number, y: number) => {
+  const u = x / ROOM_WIDTH;
+  const v = y / ROOM_DEPTH;
+  const [a, b, c, d] = studioScene.floorCorners;
+  const blend = (axis: number) =>
+    (1 - u) * (1 - v) * a[axis] +
+    u * (1 - v) * b[axis] +
+    u * v * c[axis] +
+    (1 - u) * v * d[axis];
+  return { x: blend(0), y: blend(1) };
+};
 export const toIso = ({ x, y }: Position) => projectGrid(x + 0.5, y + 0.5);
 
 export const isWalkable = ({ x, y }: Position) =>

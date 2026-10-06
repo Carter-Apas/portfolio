@@ -969,3 +969,8 @@ button {
     pointer-events: all;
   }
 }
+
+/* Continue the cool backdrop around the warm Blender render. */
+.room-stage {
+  background: #354c60;
+}

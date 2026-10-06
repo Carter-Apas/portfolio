@@ -141,7 +141,7 @@ function RoomScene({
   const tiles = Array.from({ length: ROOM_DEPTH }, (_, y) =>
     Array.from({ length: ROOM_WIDTH }, (__, x) => ({ x, y })),
   ).flat();
-  // Full-frame renders share a camera projection. Sort visitors among the furniture.
+  // Redraw masked furniture from the same artwork when it is in front of a visitor.
   const layers = [
     ...STUDIO_SCENE.props.map((prop) => ({
       kind: "prop" as const,
@@ -158,15 +158,35 @@ function RoomScene({
   return (
     <svg
       className="room-scene rendered-room"
-      viewBox="80 80 1460 1360"
+      viewBox={STUDIO_SCENE.viewBox}
       role="group"
-      aria-label="Carter's isometric studio with a coding desk, 3D printer and surfboard"
+      aria-label="Carter's isometric studio with a coding desk, 3D printer, surfboard and university certificate"
       preserveAspectRatio="xMidYMid meet"
     >
+      <defs>
+        {STUDIO_SCENE.props.map((prop) => (
+          <mask
+            id={`foreground-${prop.id}`}
+            key={prop.id}
+            maskUnits="userSpaceOnUse"
+            x={0}
+            y={0}
+            width={STUDIO_SCENE.width}
+            height={STUDIO_SCENE.height}
+            style={{ maskType: "luminance" }}
+          >
+            <image
+              href={prop.maskSrc}
+              width={STUDIO_SCENE.width}
+              height={STUDIO_SCENE.height}
+            />
+          </mask>
+        ))}
+      </defs>
       <image
-        href="/assets/studio/background.png"
-        width="1600"
-        height="1600"
+        href={STUDIO_SCENE.background}
+        width={STUDIO_SCENE.width}
+        height={STUDIO_SCENE.height}
         pointerEvents="none"
       />
       <g className="floor">
@@ -197,8 +217,9 @@ function RoomScene({
           <g key={prop.id}>
             <image
               href={prop.src}
-              width="1600"
-              height="1600"
+              width={STUDIO_SCENE.width}
+              height={STUDIO_SCENE.height}
+              mask={`url(#foreground-${prop.id})`}
               pointerEvents="none"
             />
             {prop.inspectId && (
@@ -217,7 +238,7 @@ function RoomScene({
                   }
                 }}
               >
-                <title>{prop.label} — click to explore</title>
+                <title>{`${prop.label} — click to explore`}</title>
                 <polygon
                   className="prop-hit"
                   points={prop.polygon.map((p) => p.join(",")).join(" ")}

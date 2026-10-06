@@ -1,8 +1,8 @@
 # Carter's Studio
 
-An isometric, single-room portfolio where visitors enter as pixel animals,
+An isometric, single-room portfolio where visitors enter as animals,
 explore a Blender-rendered studio, and chat. Click the computer, A1 mini printer,
-or surfboard to open coding and hobby notes.
+surfboard, or university certificate to open coding, hobby, and education notes.
 
 ## Run it
 
@@ -33,26 +33,33 @@ keeps the full flow testable locally but only connects tabs in the same browser.
 
 ## Edit the studio
 
-The editable scene is `art/studio.blend`. It contains the standing desk,
-MacBook and monitor arms, split keyboard, RGB PC, Aeron-style chair, toolbox,
-A1 mini printer, surfboard, and cutaway room in separate collections.
+The current artwork is `art/isometric_studio_warm_organic.png`, rendered from
+`art/isometric_studio_warm_organic.blend`. It includes warm window lighting,
+foliage, sage plaster, a mottled floor, and the framed university certificate.
+Earlier Blender scenes and the illustration trial remain available in the repo.
 
-Render the web assets with Blender 5.2:
+After rendering the full scene to that PNG, export the web image, masks, and
+camera metadata with Blender 5.2:
 
 ```bash
-blender -b art/studio.blend -P scripts/render_studio.py
+blender -b art/isometric_studio_warm_organic.blend -P scripts/export_studio_masks.py
 ```
 
-This exports a full preview, a room background with baked furniture shadows,
-and four aligned transparent furniture layers to `public/assets/studio`.
-`scene.json` stores the orthographic camera projection, floor grid, object hit
-polygons, and blocked furniture tiles. Visitors are drawn between the furniture
-layers according to their floor depth. Keep the camera orthographic for future
-game assets. If you move furniture, update its collision footprint and depth in
-the exporter before regenerating the assets.
+This copies the artwork to `public/assets/studio/organic-room.png` and renders
+five white-on-black visible-surface masks directly from the Blender geometry.
+The SVG uses those luminance masks to redraw furniture among avatars in depth
+order, including the chair's mesh openings. `organic-scene.json` holds the floor
+corners and hotspot polygons projected through the same camera, plus collision
+tiles. The exporter runs in a separate Blender process and never saves its
+temporary material, render, or visibility changes to the source scene.
+
+Keep the camera orthographic. If you move furniture, update the collision
+footprints and depths in the exporter before regenerating the assets.
 
 Popup copy lives in `INTERACTIVE_SPOTS` in `src/roomData.ts`. The computer,
-printer, and surfboard descriptions are placeholders. Popups support keyboard
+printer, and surfboard descriptions are placeholders. The certificate opens
+the education popup, which links to University of Auckland engineering.
+Popups support keyboard
 activation, focus trapping, outside-click dismissal, and Escape.
 
 ## Art sources
@@ -60,7 +67,9 @@ activation, focus trapping, outside-click dismissal, and Escape.
 - Studio: original simplified Blender models based on personal photo references.
   Product appearance references: [Herman Miller Aeron](https://www.hermanmiller.com/en_apc/products/seating/office-chairs/aeron-chair/specs/)
   and [Bambu Lab A1 mini](https://us.store.bambulab.com/products/a1-mini).
-  No third-party 3D models or product photography are bundled.
+  No third-party 3D models or product photography are bundled. The tree backdrop
+  is an AI-generated image embedded in the blend; its source and prompt are in
+  `art/textures/window_trees.png` and `art/textures/window_trees_prompt.txt`.
 - Legacy room tiles (retained, not used by the current scene): "Isometric Room Builder" by Thurraya. The included licence permits
   personal and commercial projects and modification.
 - Cat sprite: free "Paws & Whiskers" sample by Netherzapdos. Its included licence
