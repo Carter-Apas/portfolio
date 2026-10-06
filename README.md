@@ -14,6 +14,42 @@ npm run dev
 Movement works with a mouse, WASD, or the arrow keys. Open the site in two tabs
 to test local multiplayer presence and chat.
 
+For production, run `npm run build` followed by `npm start`. The Node server
+serves the built site and the chat notification endpoint on port 8080 by default
+(`PORT` overrides it). Vite development and preview also provide the endpoint.
+
+## Pushover chat alerts
+
+Add `PUSHOVER_API_TOKEN` and `PUSHOVER_USER_KEY` to `.env.local`, using the fields
+in `.env.example`, then restart the server. These are server secrets; do not use
+the `VITE_` prefix. Register an application and obtain your user key through
+[Pushover’s API setup](https://pushover.net/api).
+
+The first visitor chat message sends an alert immediately with the sender’s name
+and message. Further alerts are suppressed for 30 minutes across the whole room.
+Messages during the cooldown do not extend it; the next message after it expires
+triggers a new alert. Only sending a message requests an alert, so receiving it
+in other tabs does not generate duplicates. Missing keys disable alerts, and a
+notification failure never prevents the chat message from being sent.
+
+`PUSHOVER_STATE_PATH` stores the cooldown on disk (default:
+`./data/pushover-state.json`). Preserve that file across restarts. Failed deliveries
+back off for one minute before allowing another attempt. This disk-based cooldown
+is intended for one server instance; multiple replicas need a shared atomic store.
+
+The Docker image serves the site and API on port 80. Set the Pushover keys as
+runtime environment variables and mount a persistent volume at `/app/data`:
+
+```sh
+docker build -t carters-studio .
+docker run --env-file .env.local -p 8080:80 \
+  -v studio-notifications:/app/data carters-studio
+```
+
+For public multiplayer, supply `--build-arg VITE_SUPABASE_URL=...` and
+`--build-arg VITE_SUPABASE_ANON_KEY=...` to `docker build`. Those public browser
+values are configured at build time; Pushover keys are only supplied at runtime.
+
 A robot vacuum wanders between walkable floor tiles without counting as a
 visitor. It pauses in hidden tabs and for reduced motion. Each browser runs its
 own ambient resident, with no AI chat or backend required. The cat prototype is

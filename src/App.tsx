@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import RoomScene from "./components/RoomScene";
+import { notifyOwner } from "./notifications";
 import {
   ANIMALS,
   INTERACTIVE_SPOTS,
@@ -227,6 +228,7 @@ function App() {
     };
     setMessages((current) => [...current.slice(-49), message]);
     connectionRef.current.sendMessage(message);
+    notifyOwner(message);
     setDraft("");
   };
 
