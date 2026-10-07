@@ -2,6 +2,7 @@
 
 blender -b art/isometric_studio_warm_organic.blend -P scripts/export_studio_masks.py
 blender -b art/isometric_studio_warm_bedside.blend -P scripts/export_studio_masks.py
+blender -b art/isometric_studio_warm_laptop.blend -P scripts/export_studio_masks.py
 """
 import json
 import shutil

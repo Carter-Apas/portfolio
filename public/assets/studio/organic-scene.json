@@ -237,10 +237,6 @@
           849.787
         ],
         [
-          251.584,
-          741.044
-        ],
-        [
           340.414,
           679.184
         ],
@@ -411,5 +407,5 @@
       ]
     }
   ],
-  "sourceNote": "Render and visible-surface masks from art/isometric_studio_warm_bedside.blend; floor grid projected through the same orthographic camera."
+  "sourceNote": "Render and visible-surface masks from art/isometric_studio_warm_laptop.blend; floor grid projected through the same orthographic camera."
 }
