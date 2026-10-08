@@ -56,14 +56,15 @@ async function parseBody(request) {
       !validString(body.message?.text, 180))) throw new Error('Invalid message');
   // Do not accept a browser-supplied history, role, timestamp or reply decision.
   return {
-    type: body.type, roomId: body.roomId,
+    type: body.type, roomId: body.roomId, token: body.token,
     player: { id: body.player.id, name: body.player.name.trim() }, hidden: body.hidden === true,
     message: body.type === 'message' ? { id: body.message.id, text: body.message.text.trim() } : undefined,
   };
 }
 
 export function createAssistantHandler({ apiKey, model = DEFAULT_MODEL,
-  fetchImpl = globalThis.fetch, now = Date.now, logger = console } = {}) {
+  fetchImpl = globalThis.fetch, now = Date.now, logger = console,
+  authorize = () => true, getVisitors, getClientAddress = request => request.socket.remoteAddress || "unknown" } = {}) {
   const rooms = new Map();
   const ipLimits = new Map();
   let minute = [];
@@ -159,6 +160,7 @@ export function createAssistantHandler({ apiKey, model = DEFAULT_MODEL,
     let body;
     try { body = await parseBody(request); }
     catch { reply(response, 400, { error: 'Invalid request' }); return; }
+    if (!authorize(body, request)) { reply(response, 403, { error: 'Room session required' }); return; }
     if (!apiKey) { reply(response, 200, { enabled: false, thinking: false, unavailable: false, messages: [] }); return; }
     const room = getRoom(body.roomId);
     if (!room) { reply(response, 503, { error: 'Assistant is busy. Try again shortly.' }); return; }
@@ -176,13 +178,13 @@ export function createAssistantHandler({ apiKey, model = DEFAULT_MODEL,
     if (body.type === 'message') {
       const key = `${body.player.id}:${body.message.id}`;
       if (room.seen.has(key)) { reply(response, 200, snapshot(room)); return; }
-      if (room.pending >= MAX_PENDING || !reserve(request.socket.remoteAddress || 'unknown')) {
+      if (room.pending >= MAX_PENDING || !reserve(getClientAddress(request))) {
         response.setHeader('Retry-After', '60');
         reply(response, 429, { error: 'Assistant is busy. Try again in a minute.' }); return;
       }
       room.seen.set(key, now());
       const message = { ...body.message, playerId: body.player.id, name: body.player.name, sentAt: now() };
-      const visitors = [...room.players.values()].map(({ id, name }) => ({ id, name }));
+      const visitors = getVisitors ? getVisitors() : [...room.players.values()].map(({ id, name }) => ({ id, name }));
       room.pending++;
       room.queue = room.queue.then(() => respond(room, message, visitors)).catch(() => {
         room.unavailableUntil = now() + 30_000;

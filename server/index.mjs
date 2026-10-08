@@ -6,9 +6,11 @@ import { fileURLToPath } from 'node:url';
 import { createNotificationHandler, notificationOptions } from './notifications.mjs';
 import { createAssistantHandler, assistantOptions } from './assistant.mjs';
 
+import { attachRoomServer, roomOptions, clientAddress } from './room.mjs';
+
 const root = fileURLToPath(new URL('../dist/', import.meta.url));
-const notify = createNotificationHandler(notificationOptions(process.env));
-const assistant = createAssistantHandler(assistantOptions(process.env));
+let notify;
+let assistant;
 const mime = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json',
@@ -24,6 +26,17 @@ const server = createServer((request, response) => {
       });
     });
   });
+});
+const options = roomOptions(process.env);
+const room = attachRoomServer(server, options);
+notify = createNotificationHandler({ ...notificationOptions(process.env),
+  authorize: (message, request) => room.authorize({ type: 'message', roomId: 'carters-studio',
+    player: { id: message.playerId, name: message.name }, token: message.token,
+    message: { id: message.id, text: message.text } }, request),
+});
+assistant = createAssistantHandler({ ...assistantOptions(process.env),
+  authorize: room.authorize, getVisitors: room.visitors,
+  getClientAddress: request => clientAddress(request, options.trustedProxyHops),
 });
 async function serve(request, response) {
   if (request.method !== 'GET' && request.method !== 'HEAD') {
@@ -58,5 +71,6 @@ server.listen(Number(process.env.PORT || 8080), '0.0.0.0', () => {
   console.log(`Studio server listening on port ${server.address().port}`);
 });
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => {
+  room.close();
   server.close(() => process.exit(0));
 });

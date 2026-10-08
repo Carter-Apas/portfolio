@@ -1,4 +1,4 @@
-import type { ChatMessage, ConnectionMode } from "./realtime";
+import type { ChatMessage } from "./realtime";
 
 export type AssistantState = {
   enabled: boolean;
@@ -9,30 +9,13 @@ export type AssistantState = {
 type Identity = { id: string; name: string };
 const OFFLINE: AssistantState = { enabled: false, thinking: false, error: null };
 
-function roomId(mode: ConnectionMode) {
-  if (mode === "realtime") return "carters-studio";
-  // BroadcastChannel rooms are local to a browser. Give their AI context the
-  // same scope instead of mixing unrelated local visitors on the backend.
-  const key = "studio-assistant-room";
-  try {
-    let id = localStorage.getItem(key);
-    if (!id || !/^local-[a-zA-Z0-9-]+$/.test(id)) {
-      id = `local-${crypto.randomUUID()}`;
-      localStorage.setItem(key, id);
-    }
-    return id;
-  } catch {
-    return `local-${crypto.randomUUID()}`;
-  }
-}
-
 export function connectAssistant(
   player: Identity,
-  mode: ConnectionMode,
+  token: string,
   onMessage: (message: ChatMessage) => void,
   onState: (state: AssistantState) => void,
 ) {
-  const room = roomId(mode);
+  const room = "carters-studio";
   let closed = false;
   let paused = false;
   let syncing = false;
@@ -43,7 +26,7 @@ export function connectAssistant(
   const seen = new Set<string>();
   const controllers = new Set<AbortController>();
   const body = (type: string, message?: ChatMessage) => JSON.stringify({
-    type, roomId: room, player, hidden: document.hidden,
+    type, roomId: room, player, token, hidden: document.hidden,
     ...(message ? { message: { id: message.id, text: message.text } } : {}),
   });
 

@@ -15,8 +15,9 @@ Movement works with a mouse, WASD, or the arrow keys. Open the site in two tabs
 to test local multiplayer presence and chat.
 
 For production, run `npm run build` followed by `npm start`. The Node server
-serves the built site and the chat notification endpoint on port 8080 by default
-(`PORT` overrides it). Vite development and preview also provide the endpoint.
+serves the built site, room WebSocket, Assistant API and chat notification endpoint
+on port 8080 by default (`PORT` overrides it). Vite development and preview also
+provide these endpoints.
 
 ## Pushover chat alerts
 
@@ -46,9 +47,8 @@ docker run --env-file .env.local -p 8080:80 \
   -v studio-notifications:/app/data carters-studio
 ```
 
-For public multiplayer, supply `--build-arg VITE_SUPABASE_URL=...` and
-`--build-arg VITE_SUPABASE_ANON_KEY=...` to `docker build`. Those public browser
-values are configured at build time; Pushover keys are only supplied at runtime.
+Multiplayer is included in the Node server. Supply `PUBLIC_ORIGIN` and any API
+keys at runtime; no multiplayer build arguments are needed.
 
 A robot vacuum wanders between walkable floor tiles without counting as a
 visitor. It pauses in hidden tabs and for reduced motion. Each browser runs its
@@ -77,9 +77,9 @@ The server serializes reply generation, deduplicates message IDs and shares
 replies through polling, so multiple tabs do not generate duplicate answers.
 Context is the most recent 30 messages (visitors and Assistant) within 30 minutes.
 It resets after the room has been empty for five minutes or when the server restarts.
-Public multiplayer uses one shared room; local BroadcastChannel play uses a
-browser-specific room ID. Active visitors heartbeat to the server, with longer
-leases for hidden tabs. Curated facts live in `server/assistant-knowledge.mjs`;
+All visitors use one shared room. The WebSocket server supplies the active
+visitor roster, and AI requests require a live session token. Message submissions
+must reference a recent chat message accepted by that server. Curated facts live in `server/assistant-knowledge.mjs`;
 keep those aligned with the portfolio copy. No resume or private files are sent.
 
 Room messages are sent to OpenAI when enabled. The app keeps memory in the server
@@ -90,27 +90,50 @@ back off for 30 seconds; human messages and notifications remain independent.
 
 To bound API usage, message submissions allow 12 per minute per socket IP, 60 per
 minute and 300 per hour globally, with up to eight pending requests per room.
-A proxy may make visitors share the same IP limit; forwarded IP headers are not
-trusted. AI message limits do not prevent human chat. The in-memory coordination
+A proxy makes visitors share the same IP limit unless `TRUST_PROXY_HOPS` is
+configured as described below. AI message limits do not prevent human chat. The in-memory coordination
 is intended for one server instance; multiple replicas need a shared room store
 and queue. This version is text-only.
 
-## Enable public multiplayer
+## Server WebSockets
 
-The room uses Supabase Realtime presence and broadcast when these variables are
-available:
+Presence, movement and human chat use `/api/room` on the same server and origin
+as the site. HTTPS pages automatically use `wss://`. There is no external
+multiplayer service or database. Visitors reconnect after connection loss, and
+chat is disabled until the server confirms a live session.
+
+For production behind an HTTPS reverse proxy, set runtime environment variables:
 
 ```bash
-VITE_SUPABASE_URL=...
-VITE_SUPABASE_ANON_KEY=...
+PUBLIC_ORIGIN=https://your-domain.example
+TRUST_PROXY_HOPS=0
 ```
 
-Copy `.env.example` to `.env.local`, add the public project URL and anon key,
-then restart Vite. No database tables are required. In Supabase, keep Realtime
-public channel access enabled for the `carters-studio` channel.
+`PUBLIC_ORIGIN` must exactly match the browser origin, with no trailing slash.
+Configure the proxy to forward WebSocket upgrades and allow long-lived connections.
+Keep `TRUST_PROXY_HOPS=0` for direct connections. If the backend is reachable only
+through trusted proxies, set it to the exact number of proxy hops (often `1`).
+The proxy must append or replace `X-Forwarded-For` correctly; exposing the backend
+directly while trusting that header lets callers bypass IP limits. Without this
+setting, visitors behind a proxy share its IP limits.
 
-When those variables are absent, the app falls back to `BroadcastChannel`. That
-keeps the full flow testable locally but only connects tabs in the same browser.
+The server checks origins, assigns visitor and message IDs, reserves the Assistant
+name, validates every event and walkable position, rejects binary frames, and
+limits payloads to 4 KiB. It allows up to 100 connections globally, eight per IP
+and 30 connection attempts per IP per minute. Each visitor can burst 12 chat
+messages, recovering one allowance every five seconds. Packet and movement
+limits, ping/pong heartbeats and slow-reader disconnection bound resource use.
+Assistant and notification requests require a private live-session capability;
+messages must first have been accepted in room chat. Tokens are never broadcast
+to other visitors. Chat is rendered as React text rather than injected HTML.
+
+This is a public anonymous room: display names are not verified identities, and
+bots can imitate a browser or distribute requests across IPs. Origin checks do
+not authenticate non-browser callers. Use HTTPS and your hosting provider's edge
+rate limits for public deployment. Chat is visible to everyone connected; avoid
+posting private information. Room presence and chat coordination are in memory
+and currently require one server instance. Multiple replicas would need shared
+coordination and a shared Assistant queue.
 
 ## Edit the studio
 
@@ -219,10 +242,7 @@ and remain complete in the chat panel. Bubbles follow visitors and disappear whe
 the visitor leaves.
 
 Connections close on `pagehide` and reopen when restored from the browser's page
-cache. Local rooms announce stationary visitors every five seconds and expire
-peers after 30 seconds without an update, covering crashes and missed exit
-messages. Hidden tabs get 90 seconds to accommodate browser timer throttling.
-Online rooms use Supabase Presence as the membership source and close
-both the channel and socket on exit; late move packets cannot recreate peers that
-have left. See [Supabase Presence](https://supabase.com/docs/guides/realtime/presence).
-Run `npm test` for lifecycle, heartbeat, and online presence regression checks.
+cache. The server sends ping frames every 15 seconds and drops connections that
+miss the next heartbeat. Departures remove visitors immediately; late move
+packets cannot recreate departed visitors. Run `npm test` for connection lifecycle,
+room validation, abuse limits, Assistant authorization and notification checks.

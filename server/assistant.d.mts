@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { AssistantRequest } from './room.mjs';
 export const CONTEXT_MS: number;
 export const EMPTY_ROOM_MS: number;
 export type AssistantOptions = {
@@ -7,6 +8,9 @@ export type AssistantOptions = {
   fetchImpl?: typeof fetch;
   now?: () => number;
   logger?: Pick<Console, 'error'>;
+  authorize?: (body: AssistantRequest, request: IncomingMessage) => boolean;
+  getVisitors?: () => { id: string; name: string }[];
+  getClientAddress?: (request: IncomingMessage) => string;
 };
 export function assistantOptions(env: Record<string, string | undefined>): AssistantOptions;
 export function createAssistantHandler(options?: AssistantOptions): (

@@ -78,14 +78,16 @@ function App() {
     },
   ]);
   const [draft, setDraft] = useState("");
-  const [mode, setMode] = useState<ConnectionMode>("local");
+  const [mode, setMode] = useState<ConnectionMode>("connecting");
   const [activeSpot, setActiveSpot] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [assistantState, setAssistantState] = useState<AssistantState>({ enabled: false, thinking: false, error: null });
+  const [roomError, setRoomError] = useState<string | null>(null);
+  const assistantToken = useRef("");
   const assistantRef = useRef<ReturnType<typeof connectAssistant> | null>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
   const connectionRef = useRef<ReturnType<typeof connectToRoom> | null>(null);
-  const playerId = useRef(createId());
+  const playerId = useRef<string>(createId());
   const positionRef = useRef(position);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const detailRef = useRef<HTMLElement>(null);
@@ -118,6 +120,10 @@ function App() {
         }
         return [...current.slice(-49), event.message];
       });
+      if (event.message.playerId === playerId.current && !event.message.assistant) {
+        assistantRef.current?.sendMessage(event.message);
+        notifyOwner(event.message, assistantToken.current);
+      }
       return;
     }
 
@@ -136,17 +142,31 @@ function App() {
   useEffect(() => {
     if (!entered) return;
 
-    const connection = connectToRoom(currentPlayer, handleRoomEvent);
+    const connection = connectToRoom(currentPlayer, handleRoomEvent, {
+      onReady(player, token) {
+        playerId.current = player.id;
+        assistantToken.current = token;
+        assistantRef.current?.close();
+        assistantRef.current = connectAssistant(
+          { id: player.id, name: player.name }, token,
+          (message) => handleRoomEvent({ type: "message", message }), setAssistantState,
+        );
+      },
+      onStatus(status) {
+        setMode(status);
+        if (status !== "realtime") {
+          assistantRef.current?.close();
+          assistantRef.current = null;
+          assistantToken.current = "";
+          setAssistantState({ enabled: false, thinking: false, error: null });
+        }
+      },
+      onError: setRoomError,
+    });
     connectionRef.current = connection;
-    setMode(connection.mode);
-    const assistant = connectAssistant(
-      { id: currentPlayer.id, name: currentPlayer.name }, connection.mode,
-      (message) => handleRoomEvent({ type: "message", message }), setAssistantState,
-    );
-    assistantRef.current = assistant;
 
     return () => {
-      assistant.close();
+      assistantRef.current?.close();
       assistantRef.current = null;
       connection.close();
       connectionRef.current = null;
@@ -237,11 +257,10 @@ function App() {
       text,
       sentAt: Date.now(),
     };
-    setMessages((current) => [...current.slice(-49), message]);
-    connectionRef.current.sendMessage(message);
-    notifyOwner(message);
-    assistantRef.current?.sendMessage(message);
-    setDraft("");
+    if (connectionRef.current.sendMessage(message)) {
+      setRoomError(null);
+      setDraft("");
+    }
   };
 
   const activeContent = INTERACTIVE_SPOTS.find(
@@ -265,7 +284,7 @@ function App() {
           <span className="live-dot" />
           <span>{players.length + (entered ? 1 : 0)} in the room</span>
           <span className="status-divider">·</span>
-          <span>{mode === "realtime" ? "online" : "local room"}</span>
+          <span>{mode === "realtime" ? "online" : mode === "connecting" ? "connecting" : "offline"}</span>
         </div>
 
         <div className="topbar-actions">
@@ -343,6 +362,7 @@ function App() {
                 </p>
               </div>
             ))}
+            {roomError && <p className="assistant-status" role="status">{roomError}</p>}
             {assistantState.thinking && <p className="assistant-status" role="status">Assistant is thinking<span aria-hidden="true">…</span></p>}
             {assistantState.error && <p className="assistant-status" role="status">{assistantState.error}</p>}
             {entered && !assistantState.enabled && <p className="assistant-status">Assistant is offline.</p>}
@@ -356,12 +376,12 @@ function App() {
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               placeholder={entered ? "Type a message…" : "Enter the room first"}
-              disabled={!entered}
+              disabled={!entered || mode !== "realtime"}
               aria-label="Chat message"
               maxLength={180}
             />
             <button
-              disabled={!entered || !draft.trim()}
+              disabled={!entered || mode !== "realtime" || !draft.trim()}
               aria-label="Send message"
             >
               ↑

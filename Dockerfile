@@ -7,8 +7,6 @@ RUN npm ci
 
 COPY . .
 
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_ANON_KEY
 RUN npm run build
 
 FROM node:22-alpine
@@ -16,6 +14,8 @@ FROM node:22-alpine
 WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY server ./server
+COPY --from=builder /app/node_modules/ws ./node_modules/ws
+COPY public/assets/studio/organic-scene.json ./public/assets/studio/organic-scene.json
 RUN mkdir -p /app/data
 
 ENV PORT=80

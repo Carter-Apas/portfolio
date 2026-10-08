@@ -47,7 +47,7 @@ async function parseMessage(request) {
       throw new Error('Invalid message');
     }
   }
-  return { id: message.id, name: message.name.trim(), text: message.text.trim() };
+  return { id: message.id, playerId: message.playerId, name: message.name.trim(), text: message.text.trim(), token: message.token };
 }
 
 export function createNotificationHandler({
@@ -57,6 +57,7 @@ export function createNotificationHandler({
   fetchImpl = globalThis.fetch,
   now = Date.now,
   logger = console,
+  authorize = () => true,
 } = {}) {
   const path = resolve(statePath);
   let queue = Promise.resolve();
@@ -148,6 +149,7 @@ export function createNotificationHandler({
       return;
     }
     void parseMessage(request).then((message) => {
+      if (!authorize(message, request)) { reply(response, 403, { error: 'Room session required' }); return; }
       // All visitors share one queue and cooldown. Notification failure does
       // not interfere with delivery of the independent room chat message.
       const pending = queue.then(() => notify(message));

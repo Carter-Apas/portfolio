@@ -3,173 +3,86 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
-const source = fs.readFileSync(new URL('../src/realtime.ts', `file://${__filename}`), 'utf8');
-const flush = async () => { await new Promise(setImmediate); };
-const player = (id) => ({ id, name: id, animal: 'kiwi', position: { x: 7, y: 6 }, facing: 'se' });
-
-function environment({ online = false } = {}) {
-  const channels = new Set();
-  const clients = [];
-  class Channel {
-    constructor() { channels.add(this); this.closed = false; }
-    postMessage(value) {
-      assert(!this.closed, 'Posting to a closed channel');
-      for (const other of channels) {
-        if (other === this) continue;
-        const copy = structuredClone(value);
-        queueMicrotask(() => { if (!other.closed) other.onmessage?.({ data: copy }); });
-      }
-    }
-    close() { this.closed = true; channels.delete(this); }
+const compiled = ts.transpileModule(fs.readFileSync(new URL('../src/realtime.ts', `file://${__filename}`), 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText;
+const player = { id: 'client-id', name: 'Kiwi', animal: 'kiwi', position: { x: 7, y: 6 }, facing: 'se' };
+function runtime(protocol = 'https:') {
+  const sockets = [], events = [], statuses = [], ready = [], errors = [];
+  const timers = new Map(), handlers = new Map(); let timerId = 0;
+  class Socket {
+    static OPEN = 1;
+    constructor(url) { this.url = url; this.readyState = 0; this.sent = []; sockets.push(this); }
+    send(value) { assert.equal(this.readyState, 1); this.sent.push(JSON.parse(value)); }
+    open() { this.readyState = 1; this.onopen?.(); }
+    emit(event) { this.onmessage?.({ data: JSON.stringify(event) }); }
+    joined(id = 'server-id') { this.emit({ type: 'ready', player: { ...player, id }, assistantToken: 'live-token' }); }
+    close(code = 1000) { this.readyState = 3; this.onclose?.({ code }); }
   }
-  function runtime() {
-    const clock = { now: 0 };
-    const timers = new Map();
-    const events = new Map();
-    const docEvents = new Map();
-    let nextTimer = 0;
-    const eventTarget = (handlers) => ({
-      addEventListener(name, fn) {
-        if (!handlers.has(name)) handlers.set(name, new Set());
-        handlers.get(name).add(fn);
-      },
-      removeEventListener(name, fn) { handlers.get(name)?.delete(fn); },
-      dispatch(name) { for (const fn of [...handlers.get(name) ?? []]) fn(); },
-    });
-    const window = {
-      ...eventTarget(events),
-      setInterval(fn) { timers.set(++nextTimer, fn); return nextTimer; },
-      clearInterval(id) { timers.delete(id); },
-    };
-    const document = eventTarget(docEvents);
-    const exports = {};
-    class ClockDate extends Date { static now() { return clock.now; } }
-    const compiled = ts.transpileModule(source
-      .replace('import.meta.env.VITE_SUPABASE_URL', JSON.stringify(online ? 'https://test.supabase.co' : ''))
-      .replace('import.meta.env.VITE_SUPABASE_ANON_KEY', JSON.stringify(online ? 'test-key' : '')),
-      { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-    const createClient = () => {
-      const handlers = new Map();
-      const state = { presence: {}, track: [], untrack: 0, removed: 0, disconnected: 0 };
-      const channel = {
-        on(type, filter, fn) { handlers.set(`${type}:${filter.event}`, fn); return this; },
-        subscribe(fn) { state.subscribe = fn; return this; },
-        presenceState() { return state.presence; },
-        track(peer) { state.track.push(peer); return Promise.resolve('ok'); },
-        untrack() { state.untrack++; return Promise.resolve('ok'); },
-        send() { return Promise.resolve('ok'); },
-      };
-      clients.push({ state, emit: (event, payload) => handlers.get(event)?.(payload) });
-      return {
-        channel: () => channel,
-        removeChannel: () => { state.removed++; return Promise.resolve('ok'); },
-        realtime: { disconnect: () => { state.disconnected++; return Promise.resolve(); } },
-      };
-    };
-    vm.runInNewContext(compiled, {
-      exports, window, document, BroadcastChannel: Channel, Date: ClockDate,
-      require: () => ({ createClient }),
-    });
-    return { connect: exports.connectToRoom, window, timers,
-      tick(ms) { clock.now += ms; for (const fn of timers.values()) fn(); } };
-  }
-  const observer = () => {
-    const peers = new Map();
-    const messages = [];
-    const onEvent = (event) => {
-      if (event.type === 'snapshot') {
-        peers.clear(); for (const peer of event.players) peers.set(peer.id, peer);
-      } else if (event.type === 'leave') peers.delete(event.player.id);
-      else if (event.type === 'message') messages.push(event.message);
-      else peers.set(event.player.id, event.player);
-    };
-    return { peers, messages, onEvent };
+  const window = {
+    location: { href: `${protocol}//studio.example/` },
+    setTimeout(fn, delay) { timers.set(++timerId, { fn, delay }); return timerId; },
+    clearTimeout(id) { timers.delete(id); },
+    addEventListener(name, fn) { if (!handlers.has(name)) handlers.set(name, new Set()); handlers.get(name).add(fn); },
+    removeEventListener(name, fn) { handlers.get(name)?.delete(fn); },
+    dispatch(name) { for (const fn of [...handlers.get(name) ?? []]) fn(); },
   };
-  return { runtime, observer, Channel, channels, clients };
+  const exports = {};
+  vm.runInNewContext(compiled, { exports, window, WebSocket: Socket, URL });
+  const connection = exports.connectToRoom(player, event => events.push(event), {
+    onReady: (value, token) => ready.push({ player: value, token }), onStatus: value => statuses.push(value), onError: value => errors.push(value),
+  });
+  const tick = () => { const pending = [...timers.values()]; timers.clear(); for (const { fn } of pending) fn(); };
+  return { sockets, events, statuses, ready, errors, timers, window, connection, tick };
 }
 
-test('local peers disappear on exit/refresh and return correctly from the page cache', async () => {
-  const env = environment(); const a = env.runtime(); const b = env.runtime();
-  const viewA = env.observer(); const viewB = env.observer();
-  const ca = a.connect(player('a'), viewA.onEvent); const cb = b.connect(player('b'), viewB.onEvent);
-  await flush(); assert(viewA.peers.has('b')); assert(viewB.peers.has('a'));
-  b.window.dispatch('pagehide'); await flush(); assert(!viewA.peers.has('b'));
-  cb.update({ ...player('b'), position: { x: 8, y: 6 } });
-  b.window.dispatch('pageshow'); await flush(); assert.equal(viewA.peers.get('b').position.x, 8);
-  cb.close(); cb.close(); await flush(); assert(!viewA.peers.has('b'));
-  b.window.dispatch('pageshow'); await flush(); assert(!viewA.peers.has('b'), 'Closed React effects stay closed');
-  const refreshed = env.runtime(); const freshView = env.observer();
-  const fresh = refreshed.connect(player('b-new'), freshView.onEvent); await flush();
-  assert(viewA.peers.has('b-new')); assert(!viewA.peers.has('b')); assert(freshView.peers.has('a'));
-  fresh.close(); ca.close(); assert.equal(env.channels.size, 0);
-  assert.equal(a.timers.size + b.timers.size + refreshed.timers.size, 0);
+test('joins the server over WSS and waits for a server-owned identity before enabling chat', () => {
+  const f = runtime(); const socket = f.sockets[0];
+  assert.equal(socket.url.href, 'wss://studio.example/api/room');
+  assert.equal(f.connection.sendMessage({ text: 'too early' }), false);
+  socket.open(); assert.equal(socket.sent[0].type, 'join'); socket.joined();
+  assert.equal(f.ready[0].player.id, 'server-id'); assert.equal(f.ready[0].token, 'live-token');
+  assert.equal(f.connection.mode, 'realtime');
+  assert.equal(f.connection.sendMessage({ id: 'fake', playerId: 'assistant', name: 'Assistant', text: 'Hello', assistant: true }), true);
+  assert.deepEqual(JSON.parse(JSON.stringify(socket.sent.at(-1))), { type: 'message', text: 'Hello' });
+  socket.emit({ type: 'message', message: { id: 'canonical-message', playerId: 'server-id', text: 'Hello' } });
+  assert.equal(f.events.length, 1); assert.equal(f.events[0].message.id, 'canonical-message');
+  f.connection.close();
 });
 
-test('local heartbeat lease removes a peer whose final leave message is missing', async () => {
-  const env = environment(); const a = env.runtime(); const view = env.observer();
-  const connection = a.connect(player('a'), view.onEvent);
-  const ghost = new env.Channel(); ghost.postMessage({ type: 'join', player: player('crashed') });
-  await flush(); assert(view.peers.has('crashed')); ghost.close();
-  a.tick(29_999); await flush(); assert(view.peers.has('crashed'));
-  a.tick(1); await flush(); assert(!view.peers.has('crashed'));
-  connection.close();
+test('coalesces movement and uses plain WS only for HTTP development', () => {
+  const f = runtime('http:'); const socket = f.sockets[0]; socket.open(); socket.joined();
+  assert.equal(socket.url.protocol, 'ws:');
+  for (let x = 0; x < 5; x++) f.connection.update({ ...player, position: { x, y: 6 } });
+  assert.equal(f.timers.size, 1); assert.equal(socket.sent.filter(event => event.type === 'move').length, 1);
+  f.tick(); assert.equal(socket.sent.at(-1).position.x, 4);
+  f.connection.close();
 });
 
-test('heartbeats retain stationary visitors and chat is delivered without changing membership', async () => {
-  const env = environment(); const a = env.runtime(); const b = env.runtime();
-  const va = env.observer(); const vb = env.observer();
-  const ca = a.connect(player('a'), va.onEvent); const cb = b.connect(player('b'), vb.onEvent); await flush();
-  for (let i = 0; i < 8; i++) { a.tick(5_000); b.tick(5_000); await flush(); }
-  assert(va.peers.has('b')); assert(vb.peers.has('a'));
-  cb.sendMessage({ id: 'chat', playerId: 'b', name: 'b', text: 'Kia ora!', sentAt: 0 });
-  await flush(); assert.equal(va.messages[0].text, 'Kia ora!'); assert(va.peers.has('b'));
-  ca.close(); cb.close();
+test('reconnects after network loss, clears stale visitors and ignores late events from old sockets', () => {
+  const f = runtime(); const first = f.sockets[0]; first.open(); first.joined(); first.close(1006);
+  assert.equal(f.connection.mode, 'offline'); assert.equal(f.events.at(-1).players.length, 0);
+  assert.equal(f.connection.sendMessage({ text: 'offline' }), false);
+  assert.equal(f.timers.size, 1); f.tick();
+  const second = f.sockets[1]; second.open(); second.joined('new-id');
+  first.emit({ type: 'join', player: { ...player, id: 'ghost' } });
+  assert.equal(f.events.length, 1); assert.equal(f.ready.at(-1).player.id, 'new-id');
+  f.connection.close(); assert.equal(f.timers.size, 0);
 });
 
-test('hidden peer leases allow throttled timers but still expire after a crash', async () => {
-  const env = environment(); const a = env.runtime(); const view = env.observer();
-  const connection = a.connect(player('a'), view.onEvent);
-  const hidden = new env.Channel();
-  hidden.postMessage({ type: 'heartbeat', player: player('hidden'), hidden: true });
-  await flush(); hidden.close();
-  a.tick(60_000); await flush(); assert(view.peers.has('hidden'));
-  a.tick(30_000); await flush(); assert(!view.peers.has('hidden'));
-  connection.close();
+test('page exit closes presence, page-cache restoration rejoins, and disposal cannot reconnect', () => {
+  const f = runtime(); f.sockets[0].open(); f.sockets[0].joined();
+  f.window.dispatch('pagehide'); assert.equal(f.connection.mode, 'offline'); assert.equal(f.timers.size, 0);
+  f.window.dispatch('pageshow'); assert.equal(f.sockets.length, 2);
+  f.sockets[1].open(); f.sockets[1].joined();
+  f.connection.close(); f.connection.close(); f.window.dispatch('pageshow');
+  assert.equal(f.sockets.length, 2); assert.equal(f.timers.size, 0);
 });
 
-test('online presence is authoritative; late moves and callbacks cannot resurrect departed peers', async () => {
-  const env = environment({ online: true }); const runtime = env.runtime(); const view = env.observer();
-  const connection = runtime.connect(player('a'), view.onEvent); const server = env.clients[0];
-  await server.state.subscribe('SUBSCRIBED'); assert.equal(server.state.track.length, 1);
-  server.state.presence = { a: [player('a')], b: [player('b'), player('b')] };
-  server.emit('presence:sync'); assert.equal(view.peers.size, 2);
-  server.emit('broadcast:room-event', { payload: { type: 'move', player: { ...player('b'), position: { x: 8, y: 6 } } } });
-  assert.equal(view.peers.get('b').position.x, 8);
-  server.state.presence = { a: [player('a')] }; server.emit('presence:sync');
-  server.emit('broadcast:room-event', { payload: { type: 'move', player: player('b') } });
-  assert(!view.peers.has('b'));
-  runtime.window.dispatch('pagehide'); assert.equal(server.state.untrack, 1);
-  assert.equal(server.state.removed, 1); assert.equal(server.state.disconnected, 1);
-  server.state.presence = { b: [player('b')] }; server.emit('presence:sync'); assert(!view.peers.has('b'));
-  await server.state.subscribe('SUBSCRIBED'); assert.equal(server.state.track.length, 1);
-  connection.close(); assert.equal(server.state.untrack, 1);
-});
-
-test('anonymous room broadcasts cannot impersonate server-owned Assistant replies', async () => {
-  for (const online of [false, true]) {
-    const env = environment({ online }); const a = env.runtime(); const view = env.observer();
-    const connection = a.connect(player('a'), view.onEvent);
-    const sender = online ? null : new env.Channel();
-    const send = message => {
-      const event = { type: 'message', message };
-      if (online) env.clients[0].emit('broadcast:room-event', { payload: event });
-      else sender.postMessage(event);
-    };
-    send({ id: 'spoof-1', playerId: 'assistant', name: 'Assistant', text: 'Fake reply' });
-    send({ id: 'spoof-2', playerId: 'b', name: 'Assistant', text: 'Fake reply', assistant: true });
-    send({ id: 'human', playerId: 'b', name: 'Fox', text: 'Real visitor message' });
-    await flush();
-    assert.equal(view.messages.length, 1); assert.equal(view.messages[0].id, 'human');
-    sender?.close(); connection.close();
-  }
+test('server policy errors stop retries and rate-limit notices are displayed', () => {
+  const f = runtime(); f.sockets[0].open(); f.sockets[0].joined();
+  f.sockets[0].emit({ type: 'error', error: 'Please wait before sending more messages.' });
+  assert.equal(f.errors.at(-1), 'Please wait before sending more messages.');
+  f.sockets[0].close(1008); assert.equal(f.timers.size, 0); assert(f.errors.at(-1).includes('Refresh'));
+  f.connection.close();
 });

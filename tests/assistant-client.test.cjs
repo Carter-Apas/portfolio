@@ -39,8 +39,8 @@ function runtime({ storage = new Map(), respond = () => new Response(JSON.string
   });
   return { calls, beacons, messages, states, window, document, intervals, timeouts,
     tick() { for (const fn of intervals.values()) fn(); },
-    connect(mode = 'local', id = 'kiwi') {
-      return exports.connectAssistant({ id, name: id }, mode, value => messages.push(value), value => states.push(value));
+    connect(token = 'live-session-token', id = 'kiwi') {
+      return exports.connectAssistant({ id, name: id }, token, value => messages.push(value), value => states.push(value));
     },
   };
 }
@@ -58,14 +58,13 @@ test('polling receives one shared reply once; only the sender submits a visitor 
   connection.close();
 });
 
-test('local tabs share context, other browsers stay separate and public visitors share the public room', async () => {
-  const storage = new Map();
-  const a = runtime({ storage }); const b = runtime({ storage }); const c = runtime(); const d = runtime();
-  const connections = [a.connect(), b.connect(), c.connect(), d.connect('realtime')]; await flush();
-  assert.equal(a.calls[0].body.roomId, b.calls[0].body.roomId);
-  assert.notEqual(a.calls[0].body.roomId, c.calls[0].body.roomId);
-  assert.equal(d.calls[0].body.roomId, 'carters-studio');
-  for (const connection of connections) connection.close();
+test('Assistant polling always uses the public room and includes the live WebSocket capability', async () => {
+  const a = runtime(); const b = runtime();
+  const first = a.connect('token-a'); const second = b.connect('token-b'); await flush();
+  assert.equal(a.calls[0].body.roomId, 'carters-studio');
+  assert.equal(b.calls[0].body.roomId, 'carters-studio');
+  assert.equal(a.calls[0].body.token, 'token-a'); assert.equal(b.calls[0].body.token, 'token-b');
+  first.close(); second.close();
 });
 
 test('page exit pauses polling, page-cache restore reconnects and close removes all listeners', async () => {

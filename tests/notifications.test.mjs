@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createServer } from 'node:http';
+import { invokeHandler } from './http-fixture.mjs';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -22,20 +22,18 @@ async function fixture(t, options = {}) {
     },
     ...options,
   };
+  const instances = new Map();
   const start = async () => {
-    const server = createServer(createNotificationHandler(config));
-    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-    const address = `http://127.0.0.1:${server.address().port}`;
-    const close = () => new Promise(resolve => {
-      server.close(resolve); server.closeAllConnections();
-    });
-    t.after(close);
-    return { address, close };
+    const address = `instance-${instances.size}`;
+    instances.set(address, createNotificationHandler(config));
+    return { address, close: async () => {} };
   };
   const instance = await start();
   t.after(() => rm(directory, { recursive: true, force: true }));
-  const send = (message = visitor(), extra = {}, address = instance.address) => fetch(address + '/api/chat-notification', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(message), ...extra,
+  const send = (message = visitor(), extra = {}, address = instance.address) => invokeHandler(instances.get(address), {
+    path: '/api/chat-notification', method: extra.method || 'POST',
+    body: extra.method === 'GET' ? undefined : extra.body ?? JSON.stringify(message),
+    headers: extra.headers,
   });
   return { ...instance, statePath, calls, errors, clock, config, start, send };
 }
@@ -116,4 +114,11 @@ test('invalid messages and cross-site requests never call Pushover', async t => 
   assert.equal((await f.send(visitor(), { headers: { 'Content-Type': 'application/json', Origin: 'https://another-site.example' } })).status, 403);
   assert.equal((await f.send(visitor(), { headers: { 'Content-Type': 'application/json', 'Sec-Fetch-Site': 'cross-site' } })).status, 403);
   assert.equal(f.calls.length, 0);
+});
+
+test('session authorization rejects notifications that are not tied to an accepted room message', async t => {
+  const f = await fixture(t, { authorize: message => message.token === 'live-session' });
+  assert.equal((await f.send()).status, 403); assert.equal(f.calls.length, 0);
+  assert.equal((await f.send({ ...visitor(), token: 'live-session' })).status, 200);
+  assert.equal(f.calls.length, 1);
 });

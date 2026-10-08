@@ -7,6 +7,7 @@ export type NotificationOptions = {
   fetchImpl?: typeof fetch;
   now?: () => number;
   logger?: Pick<Console, 'error'>;
+  authorize?: (message: { id: string; playerId: string; name: string; text: string; token?: string }, request: IncomingMessage) => boolean;
 };
 export function notificationOptions(env: Record<string, string | undefined>): NotificationOptions;
 export function createNotificationHandler(options?: NotificationOptions): (
