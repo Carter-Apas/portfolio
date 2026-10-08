@@ -16,6 +16,7 @@ export type ChatMessage = {
   text: string;
   sentAt: number;
   system?: boolean;
+  assistant?: boolean;
 };
 
 export type RoomEvent =
@@ -59,6 +60,8 @@ function localConnection(
   channel.onmessage = ({ data }: MessageEvent<LocalEvent>) => {
     if (closed) return;
     if (data.type === "message") {
+      // AI replies arrive from our server, never from another anonymous visitor.
+      if (data.message.assistant || data.message.playerId === "assistant") return;
       onEvent(data);
       return;
     }
@@ -141,6 +144,7 @@ function realtimeConnection(
       const event = payload as RoomEvent;
       // Membership comes from Presence, so a delayed movement packet cannot
       // bring back an avatar after its departure has synced.
+      if (event.type === "message" && (event.message.assistant || event.message.playerId === "assistant")) return;
       if (event.type === "message" ||
           (event.type === "move" && presentIds.has(event.player.id))) {
         onEvent(event);

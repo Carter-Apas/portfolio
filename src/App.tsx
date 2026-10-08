@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import RoomScene from "./components/RoomScene";
+import { connectAssistant, type AssistantState } from "./assistant";
 import { notifyOwner } from "./notifications";
 import {
   ANIMALS,
@@ -80,6 +81,9 @@ function App() {
   const [mode, setMode] = useState<ConnectionMode>("local");
   const [activeSpot, setActiveSpot] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [assistantState, setAssistantState] = useState<AssistantState>({ enabled: false, thinking: false, error: null });
+  const assistantRef = useRef<ReturnType<typeof connectAssistant> | null>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
   const connectionRef = useRef<ReturnType<typeof connectToRoom> | null>(null);
   const playerId = useRef(createId());
   const positionRef = useRef(position);
@@ -135,8 +139,15 @@ function App() {
     const connection = connectToRoom(currentPlayer, handleRoomEvent);
     connectionRef.current = connection;
     setMode(connection.mode);
+    const assistant = connectAssistant(
+      { id: currentPlayer.id, name: currentPlayer.name }, connection.mode,
+      (message) => handleRoomEvent({ type: "message", message }), setAssistantState,
+    );
+    assistantRef.current = assistant;
 
     return () => {
+      assistant.close();
+      assistantRef.current = null;
       connection.close();
       connectionRef.current = null;
     };
@@ -156,7 +167,7 @@ function App() {
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, chatOpen]);
+  }, [messages, chatOpen, assistantState.thinking, assistantState.error]);
 
   useEffect(() => {
     if (!activeSpot || !detailRef.current) return;
@@ -229,6 +240,7 @@ function App() {
     setMessages((current) => [...current.slice(-49), message]);
     connectionRef.current.sendMessage(message);
     notifyOwner(message);
+    assistantRef.current?.sendMessage(message);
     setDraft("");
   };
 
@@ -276,6 +288,12 @@ function App() {
           entered={entered}
           onMove={moveTo}
           onInspect={setActiveSpot}
+          assistantThinking={assistantState.thinking}
+          onAddressAssistant={() => {
+            setChatOpen(true);
+            setDraft((current) => /^assistant\b/i.test(current) ? current : `Assistant, ${current}`);
+            window.setTimeout(() => chatInputRef.current?.focus(), 0);
+          }}
         />
 
         <div className="room-hint">
@@ -303,7 +321,7 @@ function App() {
           <div className="messages" aria-live="polite">
             {messages.map((message) => (
               <div
-                className={`message ${message.system ? "system-message" : ""}`}
+                className={`message ${message.system ? "system-message" : ""} ${message.assistant ? "assistant-message" : ""}`}
                 key={message.id}
               >
                 {!message.system && (
@@ -311,7 +329,7 @@ function App() {
                     className="message-avatar"
                     style={{
                       background:
-                        message.playerId === playerId.current
+                        message.assistant ? "#b7d5c1" : message.playerId === playerId.current
                           ? "#f4b942"
                           : "#b6a4ff",
                     }}
@@ -320,16 +338,21 @@ function App() {
                   </span>
                 )}
                 <p>
-                  <b>{message.name}</b>
+                  <b>{message.name}{message.assistant && <small className="ai-badge">AI</small>}</b>
                   <span>{message.text}</span>
                 </p>
               </div>
             ))}
+            {assistantState.thinking && <p className="assistant-status" role="status">Assistant is thinking<span aria-hidden="true">…</span></p>}
+            {assistantState.error && <p className="assistant-status" role="status">{assistantState.error}</p>}
+            {entered && !assistantState.enabled && <p className="assistant-status">Assistant is offline.</p>}
             <div ref={chatEndRef} />
           </div>
 
+          {assistantState.enabled && <p className="assistant-disclosure">Assistant is AI. Room messages are sent to OpenAI to decide when to reply.</p>}
           <form className="chat-form" onSubmit={sendMessage}>
             <input
+              ref={chatInputRef}
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               placeholder={entered ? "Type a message…" : "Enter the room first"}

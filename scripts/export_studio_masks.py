@@ -86,6 +86,13 @@ metadata = {
     'blocked': blocked, 'props': props,
     'sourceNote': f'Render and visible-surface masks from {source.relative_to(ROOT)}; floor grid projected through the same orthographic camera.',
 }
+speaker = bpy.data.objects.get('Google Nest Mini chalk fabric pebble')
+if speaker:
+    metadata['assistant'] = {
+        'anchor': project(speaker.matrix_world.translation),
+        'lights': [project(bpy.data.objects[f'Nest Mini status light {i}'].matrix_world.translation)
+                   for i in range(1, 5)],
+    }
 (OUT / 'organic-scene.json').write_text(json.dumps(metadata, indent=2) + '\n')
 
 # Flat white target geometry against black occluders yields luminance masks with

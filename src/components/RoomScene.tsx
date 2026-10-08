@@ -21,6 +21,8 @@ type Props = {
   currentPlayer: Player;
   players: Player[];
   entered: boolean;
+  assistantThinking: boolean;
+  onAddressAssistant: () => void;
   onMove: (position: Position) => void;
   onInspect: (spot: string) => void;
 };
@@ -131,6 +133,8 @@ function RoomScene({
   currentPlayer,
   players,
   entered,
+  assistantThinking,
+  onAddressAssistant,
   onMove,
   onInspect,
 }: Props) {
@@ -307,6 +311,38 @@ function RoomScene({
           </g>
         );
       })}
+      {entered && (
+        <g className={`studio-assistant ${assistantThinking ? "is-thinking" : ""}`}>
+          <g
+            role="button"
+            tabIndex={0}
+            aria-label="Talk to Assistant, the AI studio host"
+            className="assistant-target"
+            onClick={onAddressAssistant}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault(); onAddressAssistant();
+              }
+            }}
+          >
+            <title>Assistant — click to chat</title>
+            <circle cx={STUDIO_SCENE.assistant.anchor[0]} cy={STUDIO_SCENE.assistant.anchor[1]} r="34" />
+          </g>
+          {assistantThinking && (
+            <g pointerEvents="none" role="img" aria-label="Assistant is thinking">
+              {STUDIO_SCENE.assistant.lights.map(([x, y], i) => (
+                <circle className="assistant-light" cx={x} cy={y} r="0.7" key={i}
+                  style={{ animationDelay: `${i * 0.18}s` }} />
+              ))}
+            </g>
+          )}
+          {bubbles.assistant && (
+            <g transform={`translate(${STUDIO_SCENE.assistant.anchor[0]},${STUDIO_SCENE.assistant.anchor[1] + 86})`}>
+              <SpeechBubble message={bubbles.assistant.message} />
+            </g>
+          )}
+        </g>
+      )}
       {entered && [currentPlayer, ...players].map((player) => {
         const bubble = bubbles[player.id];
         return bubble ? (

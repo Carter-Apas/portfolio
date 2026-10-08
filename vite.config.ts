@@ -2,9 +2,10 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { createNotificationHandler, notificationOptions } from "./server/notifications.mjs";
+import { createAssistantHandler, assistantOptions } from "./server/assistant.mjs";
 
 export default defineConfig(({ mode }) => {
-  // Unprefixed Pushover values stay in the Node middleware closure. Vite only
+  // Unprefixed server secrets stay in the Node middleware closure. Vite only
   // exposes VITE_ variables to the browser application.
   const env = loadEnv(mode, process.cwd(), "");
   return {
@@ -16,12 +17,14 @@ export default defineConfig(({ mode }) => {
         },
       }),
       {
-        name: "studio-chat-notifications",
+        name: "studio-chat-services",
         configureServer(server) {
           server.middlewares.use(createNotificationHandler(notificationOptions(env)));
+          server.middlewares.use(createAssistantHandler(assistantOptions(env)));
         },
         configurePreviewServer(server) {
           server.middlewares.use(createNotificationHandler(notificationOptions(env)));
+          server.middlewares.use(createAssistantHandler(assistantOptions(env)));
         },
       },
     ],

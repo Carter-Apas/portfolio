@@ -4,9 +4,11 @@ import { createServer } from 'node:http';
 import { extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createNotificationHandler, notificationOptions } from './notifications.mjs';
+import { createAssistantHandler, assistantOptions } from './assistant.mjs';
 
 const root = fileURLToPath(new URL('../dist/', import.meta.url));
 const notify = createNotificationHandler(notificationOptions(process.env));
+const assistant = createAssistantHandler(assistantOptions(process.env));
 const mime = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json',
@@ -15,9 +17,11 @@ const mime = {
 };
 const server = createServer((request, response) => {
   notify(request, response, () => {
-    void serve(request, response).catch(() => {
-      if (!response.headersSent) response.writeHead(500);
-      response.end();
+    assistant(request, response, () => {
+      void serve(request, response).catch(() => {
+        if (!response.headersSent) response.writeHead(500);
+        response.end();
+      });
     });
   });
 });

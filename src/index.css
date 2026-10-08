@@ -1033,3 +1033,41 @@ button {
   font-size: 21px;
   font-weight: 500;
 }
+
+
+.ai-badge {
+  margin-left: 5px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: #dce9df;
+  color: #45654f;
+  font-size: 8px;
+  font-weight: 600;
+}
+
+.assistant-status,
+.assistant-disclosure {
+  color: #6d6266;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.assistant-status { margin: 6px 0 12px; }
+.assistant-disclosure { margin: 0; padding: 0 16px 10px; }
+.assistant-message p span { color: #486150; }
+.assistant-target { cursor: pointer; outline: none; }
+.assistant-target circle { fill: transparent; stroke: transparent; stroke-width: 3; }
+.assistant-target:hover circle,
+.assistant-target:focus-visible circle { stroke: #b7d5c1; fill: #b7d5c120; }
+.assistant-light {
+  fill: #f4fff6;
+  filter: drop-shadow(0 0 3px #c2f5d2);
+  animation: assistant-glow 1.3s ease-in-out infinite;
+}
+@keyframes assistant-glow {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .assistant-light { animation: none; opacity: 1; }
+}

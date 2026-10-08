@@ -407,5 +407,29 @@
       ]
     }
   ],
-  "sourceNote": "Render and visible-surface masks from art/isometric_studio_warm_laptop.blend; floor grid projected through the same orthographic camera."
+  "sourceNote": "Render and visible-surface masks from art/isometric_studio_warm_laptop.blend; floor grid projected through the same orthographic camera.",
+  "assistant": {
+    "anchor": [
+      1340.742,
+      810.595
+    ],
+    "lights": [
+      [
+        1342.88,
+        807.84
+      ],
+      [
+        1341.454,
+        806.905
+      ],
+      [
+        1340.029,
+        806.083
+      ],
+      [
+        1338.603,
+        805.371
+      ]
+    ]
+  }
 }

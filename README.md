@@ -56,6 +56,45 @@ own ambient resident, with no AI chat or backend required. The cat prototype is
 preserved in `src/hooks/useResidentCat.ts`; the active vacuum uses
 `src/hooks/useResidentVacuum.ts`.
 
+## Assistant in room chat
+
+Add `OPENAI_API_KEY` to `.env.local` and restart Vite or the production server.
+The Google Nest Mini hosts **Assistant**, a friendly AI guide with curated public
+portfolio knowledge. `OPENAI_MODEL` defaults to `gpt-4.1-mini` and can be changed
+to another Responses API model supporting Structured Outputs. Both values are
+server-side; never use a `VITE_` prefix for the API key. Supply them as runtime
+environment variables when using Docker.
+
+Assistant replies to a lone visitor's messages. With multiple visitors it uses
+conversation context to answer when addressed or followed up with, and stays
+quiet during visitor-to-visitor chat. Mention “Assistant” to explicitly ask it,
+or click the Nest Mini to address your next message. Its dots glow while working,
+and replies appear in shared chat and a speech bubble above the speaker.
+A small AI badge identifies its messages. Assistant does not count as a visitor
+or trigger Pushover alerts.
+
+The server serializes reply generation, deduplicates message IDs and shares
+replies through polling, so multiple tabs do not generate duplicate answers.
+Context is the most recent 30 messages (visitors and Assistant) within 30 minutes.
+It resets after the room has been empty for five minutes or when the server restarts.
+Public multiplayer uses one shared room; local BroadcastChannel play uses a
+browser-specific room ID. Active visitors heartbeat to the server, with longer
+leases for hidden tabs. Curated facts live in `server/assistant-knowledge.mjs`;
+keep those aligned with the portfolio copy. No resume or private files are sent.
+
+Room messages are sent to OpenAI when enabled. The app keeps memory in the server
+process only, does not write chat to disk, and uses `store: false` for Responses.
+This does not override OpenAI's own API data retention policies. Missing keys
+leave human chat working without AI. Failures show an unavailable status and
+back off for 30 seconds; human messages and notifications remain independent.
+
+To bound API usage, message submissions allow 12 per minute per socket IP, 60 per
+minute and 300 per hour globally, with up to eight pending requests per room.
+A proxy may make visitors share the same IP limit; forwarded IP headers are not
+trusted. AI message limits do not prevent human chat. The in-memory coordination
+is intended for one server instance; multiple replicas need a shared room store
+and queue. This version is text-only.
+
 ## Enable public multiplayer
 
 The room uses Supabase Realtime presence and broadcast when these variables are

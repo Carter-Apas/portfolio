@@ -154,3 +154,22 @@ test('online presence is authoritative; late moves and callbacks cannot resurrec
   await server.state.subscribe('SUBSCRIBED'); assert.equal(server.state.track.length, 1);
   connection.close(); assert.equal(server.state.untrack, 1);
 });
+
+test('anonymous room broadcasts cannot impersonate server-owned Assistant replies', async () => {
+  for (const online of [false, true]) {
+    const env = environment({ online }); const a = env.runtime(); const view = env.observer();
+    const connection = a.connect(player('a'), view.onEvent);
+    const sender = online ? null : new env.Channel();
+    const send = message => {
+      const event = { type: 'message', message };
+      if (online) env.clients[0].emit('broadcast:room-event', { payload: event });
+      else sender.postMessage(event);
+    };
+    send({ id: 'spoof-1', playerId: 'assistant', name: 'Assistant', text: 'Fake reply' });
+    send({ id: 'spoof-2', playerId: 'b', name: 'Assistant', text: 'Fake reply', assistant: true });
+    send({ id: 'human', playerId: 'b', name: 'Fox', text: 'Real visitor message' });
+    await flush();
+    assert.equal(view.messages.length, 1); assert.equal(view.messages[0].id, 'human');
+    sender?.close(); connection.close();
+  }
+});
